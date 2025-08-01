@@ -1,39 +1,58 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, onMounted, onUnmounted } from "vue";
+import { RouterView } from "vue-router";
+import Sidebar from "./components/Sidebar.vue";
 
-const greetMsg = ref("");
-const name = ref("");
+// 侧边栏宽度，默认为250px
+const sidebarWidth = ref(250);
+// 分隔条是否正在拖拽
+const isDragging = ref(false);
 
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-  greetMsg.value = await invoke("greet", { name: name.value });
-}
+// 处理鼠标按下事件，开始拖拽
+const startDrag = (_: MouseEvent) => {
+  isDragging.value = true;
+  document.body.style.userSelect = 'none'; // 防止拖拽时选中文本
+};
+
+// 处理鼠标移动事件，调整侧边栏宽度
+const handleDrag = (e: MouseEvent) => {
+  if (!isDragging.value) return;
+  // 确保侧边栏宽度在合理范围内
+  const newWidth = Math.max(200, Math.min(e.clientX, window.innerWidth - 300));
+  sidebarWidth.value = newWidth;
+};
+
+// 处理鼠标释放事件，结束拖拽
+const endDrag = () => {
+  isDragging.value = false;
+  document.body.style.userSelect = '';
+};
+
+// 组件挂载时添加事件监听
+onMounted(() => {
+  window.addEventListener('mousemove', handleDrag);
+  window.addEventListener('mouseup', endDrag);
+});
+
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('mousemove', handleDrag);
+  window.removeEventListener('mouseup', endDrag);
+});
 </script>
 
 <template>
-  <main class="container">
-    <h1>Welcome to Tauri + Vue</h1>
-
-    <div class="row">
-      <a href="https://vitejs.dev" target="_blank">
-        <img src="/vite.svg" class="logo vite" alt="Vite logo" />
-      </a>
-      <a href="https://tauri.app" target="_blank">
-        <img src="/tauri.svg" class="logo tauri" alt="Tauri logo" />
-      </a>
-      <a href="https://vuejs.org/" target="_blank">
-        <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-      </a>
+  <div class="app-container">
+    <Sidebar :style="{ width: sidebarWidth + 'px' }" />
+    <div 
+      class="resizer"
+      @mousedown="startDrag"
+      :class="{ 'dragging': isDragging }"
+    />
+    <div class="main-content" :style="{ width: `calc(100% - ${sidebarWidth + 5}px)` }">
+      <RouterView />
     </div>
-    <p>Click on the Tauri, Vite, and Vue logos to learn more.</p>
-
-    <form class="row" @submit.prevent="greet">
-      <input id="greet-input" v-model="name" placeholder="Enter a name..." />
-      <button type="submit">Greet</button>
-    </form>
-    <p>{{ greetMsg }}</p>
-  </main>
+  </div>
 </template>
 
 <style scoped>
@@ -48,13 +67,13 @@ async function greet() {
 </style>
 <style>
 :root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-family: Inter, sans-serif;
   font-size: 16px;
-  line-height: 24px;
+  line-height: 1.5;
   font-weight: 400;
 
-  color: #0f0f0f;
-  background-color: #f6f6f6;
+  color: #000000;
+  background-color: #ffffff;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -63,98 +82,114 @@ async function greet() {
   -webkit-text-size-adjust: 100%;
 }
 
-.container {
+.app-container {
+  display: flex;
+  height: 100vh;
+  background-color: #ffffff;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 可拖拽分隔条样式 */
+.resizer {
+  width: 5px;
+  background-color: #eee;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.resizer:hover {
+  background-color: #ccc;
+}
+
+.resizer.dragging {
+  background-color: #666;
+}
+
+/* 确保侧边栏内容不会溢出 */
+.sidebar {
+  overflow: hidden;
+  transition: width 0.2s;
+}
+
+/* 隐藏body的滚动条 */
+body {
+  overflow: hidden;
   margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
+  padding: 0;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #ffffff;
+  color: #000000;
+  /* 确保滚动条不超出容器 */
+  max-height: 100%;
+  /* 可选：自定义滚动条样式使其不那么明显 */
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f5f5f5;
 }
 
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
+/* 自定义滚动条 - WebKit浏览器 */
+.main-content::-webkit-scrollbar {
+  width: 6px;
 }
 
-.row {
-  display: flex;
-  justify-content: center;
+.main-content::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
 }
 
 a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+  color: #000000;
+  text-decoration: none;
 }
 
 a:hover {
-  color: #535bf2;
+  text-decoration: underline;
 }
 
 h1 {
-  text-align: center;
+  margin-top: 0;
 }
 
 input,
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  padding: 0.5em 1em;
   font-size: 1em;
-  font-weight: 500;
   font-family: inherit;
-  color: #0f0f0f;
+  color: #000000;
   background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
 }
 
 button {
   cursor: pointer;
+  background-color: #f8f8f8;
 }
 
 button:hover {
-  border-color: #396cd8;
+  background-color: #f0f0f0;
+  border-color: #aaa;
 }
+
 button:active {
-  border-color: #396cd8;
   background-color: #e8e8e8;
 }
 
-input,
-button {
+input:focus {
+  border-color: #666;
   outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
 }
 
 </style>
