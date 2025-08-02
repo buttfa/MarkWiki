@@ -42,7 +42,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="app-container">
+  <div class="app-container" @contextmenu.prevent>
     <Sidebar :style="{ width: sidebarWidth + 'px' }" />
     <div 
       class="resizer"
