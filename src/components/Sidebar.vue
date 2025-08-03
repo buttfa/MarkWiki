@@ -20,6 +20,11 @@
 
       <div class="nav-group">
         <div class="group-title">
+          <svg class="icon menu-toggle" :class="{ 'collapsed': isWikiCollapsed }" @click="toggleWikiCollapse" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
           <span>知识库</span>
           <button class="refresh-btn" @click="refreshWikis">
             <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -30,7 +35,7 @@
           </button>
         </div>
         <Transition name="fade">
-          <div key="wiki-content" class="wiki-list-container">
+          <div key="wiki-content" class="wiki-list-container" :class="{ 'collapsed': isWikiCollapsed }">
             <div v-if="isLoading" class="loading-item">
               <div class="spinner"></div>
               <span>加载中...</span>
@@ -102,6 +107,11 @@
 
       <div class="nav-group">
         <div class="group-title">
+            <svg class="icon menu-toggle" :class="{ 'collapsed': isWorkspaceCollapsed }" @click="toggleWorkspaceCollapse" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
             <span>工作区</span>
             <button v-if="selectedWikiName" class="refresh-btn" @click="refreshWorkspace">
               <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -112,7 +122,7 @@
             </button>
         </div>
         <Transition name="fade">
-          <div key="workspace-content" class="wiki-list-container">
+          <div key="workspace-content" class="wiki-list-container" :class="{ 'collapsed': isWorkspaceCollapsed }">
             <div v-if="!selectedWikiName" class="nav-item placeholder-item">
               <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
@@ -316,6 +326,20 @@ const router = useRouter();
 // 存储每个文件夹的展开状态
 const folderExpandedStates: Ref<Record<string, boolean>> = ref({});
 
+// 控制知识库和工作区折叠状态
+const isWikiCollapsed = ref(false);
+const isWorkspaceCollapsed = ref(false);
+
+// 切换知识库折叠状态
+const toggleWikiCollapse = () => {
+  isWikiCollapsed.value = !isWikiCollapsed.value;
+};
+
+// 切换工作区折叠状态
+const toggleWorkspaceCollapse = () => {
+  isWorkspaceCollapsed.value = !isWorkspaceCollapsed.value;
+};
+
 const navigateTo = (path: string) => {
   if (path === '/') {
     // 清空选择的知识库状态和工作区文件结构
@@ -429,13 +453,22 @@ const handleFileClick = (node: FileNode) => {
 .group-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
 }
 
 .group-title span {
   font-weight: 600;
   color: #666;
 }
+
+.menu-toggle {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.menu-toggle.collapsed {
+  transform: rotate(90deg);
+}
+
 .sidebar {
   width: 250px;
   height: 100vh;
@@ -531,6 +564,15 @@ const handleFileClick = (node: FileNode) => {
   color: #000000;
   cursor: pointer;
   transition: background-color 0.2s;
+}
+
+.wiki-list-container {
+  transition: all 0.3s ease;
+}
+
+.wiki-list-container.collapsed {
+  max-height: 0;
+  overflow: hidden;
 }
 
 .wiki-subitems {
