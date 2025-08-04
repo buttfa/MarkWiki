@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// 知识库项结构体，用于表示知识库的基本信息。
 ///
@@ -37,27 +37,11 @@ pub struct FileNode {
 /// * `Result<FileNode, String>` - 成功时返回 `Ok(FileNode)`，失败时返回 `Err(String)`。其中 `FileNode` 表示知识库的文件结构，`String` 表示错误信息。
 #[tauri::command]
 pub fn get_wiki_file_structure(wiki_name: String) -> Result<FileNode, String> {
-    // 获取 MarkWiki 可执行文件路径
-    let exe_path = std::env::current_exe().map_err(|e| format!("获取可执行文件路径失败: {}", e))?;
-
-    // 获取 MarkWiki 所在目录
-    let exe_dir = exe_path.parent().ok_or("获取可执行文件目录失败")?;
-
-    // 构建知识库目录路径
-    let wiki_dir = exe_dir.join("Wikis").join(wiki_name);
-
-    // 检查知识库目录是否存在
-    if !wiki_dir.exists() {
-        return Err(format!("知识库目录不存在于路径: {:?}", wiki_dir));
-    }
-
-    // 检查目录是否可读
-    if !wiki_dir.is_dir() {
-        return Err(format!("路径不是一个目录: {:?}", wiki_dir));
-    }
+    // 构建目标知识库的存储目录
+    let target_wiki_dir = get_wiki_storage_dir()?.join(wiki_name);
 
     // 构建文件树并返回
-    build_file_tree(&wiki_dir)
+    build_file_tree(&target_wiki_dir)
 }
 
 /// 该函数用于获取MarkWiki运行路径下的知识库列表。它会遍历Wiki目录下的所有文件夹，检查每个文件夹是否为Git仓库，并判断是否配置了远程仓库。
@@ -66,28 +50,13 @@ pub fn get_wiki_file_structure(wiki_name: String) -> Result<FileNode, String> {
 /// * `Result<Vec<Wiki>, String>` - 成功时返回 `Ok(Vec<Wiki>)`，失败时返回 `Err(String)`。其中 `Vec<Wiki>` 包含所有知识库的信息，`String` 表示错误信息。
 #[tauri::command]
 pub fn get_wiki_list() -> Result<Vec<Wiki>, String> {
-    // 获取 MarkWiki 可执行文件路径
-    let exe_path = std::env::current_exe().map_err(|e| format!("获取可执行文件路径失败: {}", e))?;
-
-    // 获取 MarkWiki 所在目录
-    let exe_dir = exe_path.parent().ok_or("获取可执行文件目录失败")?;
-
-    // 构建 Wikis 目录路径
-    let wiki_dir = exe_dir.join("Wikis");
-
-    // 确保 Wikis 目录存在
-    if !wiki_dir.exists() {
-        std::fs::create_dir_all(&wiki_dir).map_err(|e| format!("创建知识库目录失败: {}", e))?;
-    }
-
-    // 读取 Wikis 目录内容
-    let entries = std::fs::read_dir(&wiki_dir).map_err(|e| format!("读取知识库目录失败: {}", e))?;
-
-    // 收集 Wiki 信息
+    // 统计知识库信息
     let mut wikis = Vec::new();
 
     // 遍历 Wikis 目录下的所有文件夹
-    for entry in entries {
+    for entry in std::fs::read_dir(&get_wiki_storage_dir()?)
+        .map_err(|e| format!("读取知识库目录失败: {}", e))?
+    {
         let entry = entry.map_err(|e| format!("读取条目失败: {}", e))?;
         let path = entry.path();
 
@@ -128,26 +97,20 @@ pub fn get_wiki_list() -> Result<Vec<Wiki>, String> {
 /// * `Result<String, String>` - 成功时返回 `Ok(String)` 包含知识库路径，失败时返回 `Err(String)` 包含错误信息
 #[tauri::command]
 pub fn create_local_wiki(wiki_name: &str) -> Result<String, String> {
-    // 获取 MarkWiki 可执行文件路径
-    let exe_path = std::env::current_exe().map_err(|e| format!("获取可执行文件路径失败: {}", e))?;
-
-    // 获取 MarkWiki 所在目录
-    let exe_dir = exe_path.parent().ok_or("获取可执行文件目录失败")?;
-
-    // 构建知识库目录路径
-    let wiki_dir = exe_dir.join("Wikis").join(wiki_name);
+    // 构建目标知识库的存储目录
+    let target_wiki_dir = get_wiki_storage_dir()?.join(wiki_name);
 
     // 检查知识库目录是否已存在
-    if wiki_dir.exists() {
-        return Err(format!("知识库目录已存在: {:?}", wiki_dir));
+    if target_wiki_dir.exists() {
+        return Err(format!("知识库目录已存在: {:?}", target_wiki_dir));
     }
 
     // 创建知识库目录
-    std::fs::create_dir_all(&wiki_dir).map_err(|e| format!("创建知识库目录失败: {}", e))?;
+    std::fs::create_dir_all(&target_wiki_dir).map_err(|e| format!("创建知识库目录失败: {}", e))?;
 
     // 初始化 Git 仓库
-    match git2::Repository::init(&wiki_dir) {
-        Ok(_) => Ok(wiki_dir.to_string_lossy().to_string()),
+    match git2::Repository::init(&target_wiki_dir) {
+        Ok(_) => Ok(target_wiki_dir.to_string_lossy().to_string()),
         Err(e) => Err(format!("初始化Git仓库失败: {}", e)),
     }
 }
@@ -161,12 +124,6 @@ pub fn create_local_wiki(wiki_name: &str) -> Result<String, String> {
 /// * `Result<String, String>` - 成功时返回 `Ok(String)` 包含知识库路径，失败时返回 `Err(String)` 包含错误信息
 #[tauri::command]
 pub fn create_remote_wiki(remote_url: &str) -> Result<String, String> {
-    // 获取 MarkWiki 可执行文件路径
-    let exe_path = std::env::current_exe().map_err(|e| format!("获取可执行文件路径失败: {}", e))?;
-
-    // 获取 MarkWiki 所在目录
-    let exe_dir = exe_path.parent().ok_or("获取可执行文件目录失败")?;
-
     // 从URL提取仓库名称
     let repo_name = remote_url
         .split('/')
@@ -174,20 +131,21 @@ pub fn create_remote_wiki(remote_url: &str) -> Result<String, String> {
         .and_then(|s| s.split('.').next())
         .ok_or("从URL提取仓库名称失败")?;
 
-    // 构建知识库目录路径
-    let wiki_dir = exe_dir.join("Wikis").join(repo_name);
+    // 构建目标知识库的存储目录
+    let target_wiki_dir = get_wiki_storage_dir()?.join(repo_name);
 
     // 检查知识库目录是否已存在
-    if wiki_dir.exists() {
-        return Err(format!("知识库目录已存在: {:?}", wiki_dir));
+    if target_wiki_dir.exists() {
+        return Err(format!("知识库目录已存在: {:?}", target_wiki_dir));
     } else {
         // 创建知识库目录
-        std::fs::create_dir_all(&wiki_dir).map_err(|e| format!("创建知识库目录失败: {}", e))?;
+        std::fs::create_dir_all(&target_wiki_dir)
+            .map_err(|e| format!("创建知识库目录失败: {}", e))?;
     }
 
     // 克隆远程仓库
-    match git2::Repository::clone(remote_url, &wiki_dir) {
-        Ok(_) => Ok(wiki_dir.to_string_lossy().to_string()),
+    match git2::Repository::clone(remote_url, &target_wiki_dir) {
+        Ok(_) => Ok(target_wiki_dir.to_string_lossy().to_string()),
         Err(e) => Err(format!("克隆仓库失败: {}", e)),
     }
 }
@@ -243,4 +201,21 @@ fn build_file_tree(path: &Path) -> Result<FileNode, String> {
             children: None,
         })
     }
+}
+
+fn get_wiki_storage_dir() -> Result<PathBuf, String> {
+    // 获取 MarkWiki 可执行文件路径
+    let exe_path = std::env::current_exe().map_err(|e| format!("获取可执行文件路径失败: {}", e))?;
+
+    // 获取 MarkWiki 所在目录
+    let exe_dir = exe_path.parent().ok_or("获取可执行文件目录失败")?;
+
+    // 构建知识库目录路径
+    let wiki_dir = exe_dir.join("wiki");
+
+    // 确保 wiki 目录存在
+    if !wiki_dir.exists() {
+        std::fs::create_dir_all(&wiki_dir).map_err(|e| format!("创建知识库目录失败: {}", e))?;
+    }
+    Ok(wiki_dir)
 }
