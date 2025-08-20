@@ -111,7 +111,13 @@ pub fn create_local_wiki(wiki_name: &str) -> Result<String, String> {
     // 初始化 Git 仓库
     match git2::Repository::init(&target_wiki_dir) {
         Ok(_) => Ok(target_wiki_dir.to_string_lossy().to_string()),
-        Err(e) => Err(format!("初始化Git仓库失败: {}", e)),
+        Err(e) => {
+            // 删除已创建的目录
+            std::fs::remove_dir_all(&target_wiki_dir)
+                .map_err(|e| format!("删除已创建知识库目录失败: {}", e))?;
+            // 返回错误信息
+            Err(format!("初始化Git仓库失败: {}", e))
+        }
     }
 }
 
@@ -146,7 +152,13 @@ pub fn create_remote_wiki(remote_url: &str) -> Result<String, String> {
     // 克隆远程仓库
     match git2::Repository::clone(remote_url, &target_wiki_dir) {
         Ok(_) => Ok(target_wiki_dir.to_string_lossy().to_string()),
-        Err(e) => Err(format!("克隆仓库失败: {}", e)),
+        Err(e) => {
+            // 删除已创建的目录
+            std::fs::remove_dir_all(&target_wiki_dir)
+                .map_err(|e| format!("删除已创建知识库目录失败: {}", e))?;
+            // 返回错误信息
+            Err(format!("克隆仓库失败: {}", e))
+        }
     }
 }
 
