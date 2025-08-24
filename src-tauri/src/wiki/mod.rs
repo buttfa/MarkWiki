@@ -36,7 +36,7 @@ pub struct FileNode {
 /// # 返回值
 /// * `Result<FileNode, String>` - 成功时返回 `Ok(FileNode)`，失败时返回 `Err(String)`。其中 `FileNode` 表示知识库的文件结构，`String` 表示错误信息。
 #[tauri::command]
-pub fn get_wiki_file_structure(wiki_name: String) -> Result<FileNode, String> {
+pub async fn get_wiki_file_structure(wiki_name: String) -> Result<FileNode, String> {
     // 构建目标知识库的存储目录
     let target_wiki_dir = get_wiki_storage_dir()?.join(wiki_name);
 
@@ -49,7 +49,7 @@ pub fn get_wiki_file_structure(wiki_name: String) -> Result<FileNode, String> {
 /// # 返回值
 /// * `Result<Vec<Wiki>, String>` - 成功时返回 `Ok(Vec<Wiki>)`，失败时返回 `Err(String)`。其中 `Vec<Wiki>` 包含所有知识库的信息，`String` 表示错误信息。
 #[tauri::command]
-pub fn get_wiki_list() -> Result<Vec<Wiki>, String> {
+pub async fn get_wiki_list() -> Result<Vec<Wiki>, String> {
     // 统计知识库信息
     let mut wikis = Vec::new();
 
@@ -96,7 +96,7 @@ pub fn get_wiki_list() -> Result<Vec<Wiki>, String> {
 /// # 返回值
 /// * `Result<String, String>` - 成功时返回 `Ok(String)` 包含知识库路径，失败时返回 `Err(String)` 包含错误信息
 #[tauri::command]
-pub fn create_local_wiki(wiki_name: &str) -> Result<String, String> {
+pub async fn create_local_wiki(wiki_name: &str) -> Result<String, String> {
     // 构建目标知识库的存储目录
     let target_wiki_dir = get_wiki_storage_dir()?.join(wiki_name);
 
@@ -129,7 +129,7 @@ pub fn create_local_wiki(wiki_name: &str) -> Result<String, String> {
 /// # 返回值
 /// * `Result<String, String>` - 成功时返回 `Ok(String)` 包含知识库路径，失败时返回 `Err(String)` 包含错误信息
 #[tauri::command]
-pub fn create_remote_wiki(remote_url: &str) -> Result<String, String> {
+pub async fn create_remote_wiki(remote_url: &str) -> Result<String, String> {
     // 从URL提取仓库名称
     let repo_name = remote_url
         .split('/')

@@ -21,7 +21,12 @@
       </div>
       
       <div class="button-group">
-        <button class="btn create-btn" @click="handleCreate">创建</button>
+        <button class="btn create-btn" @click="handleCreate" :disabled="isLoading">
+          <span v-if="!isLoading">创建</span>
+          <span v-else class="loading-spinner">
+            <span class="spinner"></span> 创建中...
+          </span>
+        </button>
         <button class="btn cancel-btn" @click="close">退出</button>
       </div>
     </div>
@@ -160,6 +165,28 @@ const handleCreate = async () => {
 
 .create-btn:hover {
   background-color: #333;
+}
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .cancel-btn {
