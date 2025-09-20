@@ -226,20 +226,36 @@ fn build_file_tree(path: &Path) -> Result<FileNode, String> {
 /// # 返回值
 /// * `Result<PathBuf, String>` - 成功时返回 `Ok(PathBuf)` 包含知识库的统一存储目录，失败时返回 `Err(String)` 包含错误信息
 fn get_wiki_storage_dir() -> Result<PathBuf, String> {
-    // 获取 MarkWiki 可执行文件路径
-    let exe_path = std::env::current_exe().map_err(|e| format!("获取可执行文件路径失败: {}", e))?;
-
-    // 获取 MarkWiki 所在目录
-    let exe_dir = exe_path.parent().ok_or("获取可执行文件目录失败")?;
-
-    // 构建知识库目录路径
-    let wiki_dir = exe_dir.join("wiki");
-
-    // 确保 wiki 目录存在
-    if !wiki_dir.exists() {
-        std::fs::create_dir_all(&wiki_dir).map_err(|e| format!("创建知识库目录失败: {}", e))?;
+    // Android 平台
+    #[cfg(target_os = "android")]
+    {
+        let wiki_dir = std::env::temp_dir().join("markwiki").join("wiki");
+        // 确保 wiki 目录存在
+        if !wiki_dir.exists() {
+            std::fs::create_dir_all(&wiki_dir).map_err(|e| format!("创建知识库目录失败: {}", e))?;
+        }
+        return Ok(wiki_dir);
     }
-    Ok(wiki_dir)
+
+    // Linux/Windows 平台
+    #[cfg(not(target_os = "android"))]
+    {
+        // 获取 MarkWiki 可执行文件路径
+        let exe_path =
+            std::env::current_exe().map_err(|e| format!("获取可执行文件路径失败: {}", e))?;
+
+        // 获取 MarkWiki 所在目录
+        let exe_dir = exe_path.parent().ok_or("获取可执行文件目录失败")?;
+
+        // 构建知识库目录路径
+        let wiki_dir = exe_dir.join("wiki");
+
+        // 确保 wiki 目录存在
+        if !wiki_dir.exists() {
+            std::fs::create_dir_all(&wiki_dir).map_err(|e| format!("创建知识库目录失败: {}", e))?;
+        }
+        return Ok(wiki_dir);
+    }
 }
 
 #[cfg(test)]
