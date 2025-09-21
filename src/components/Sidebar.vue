@@ -1,11 +1,28 @@
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ 'collapsed': isSidebarCollapsed }">
   <CreateWikiModal
     :visible="isCreateWikiModalVisible"
     @close="closeCreateWikiModal"
     @success="onCreateWikiSuccess"
   />
   <div class="logo-container">
+    <svg 
+      class="icon sidebar-toggle" 
+      @click="toggleSidebarCollapse"
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      stroke-width="2" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+    >
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
     <h1 class="logo">MarkWiki</h1>
   </div>
     
@@ -176,6 +193,14 @@ import { invoke } from "@tauri-apps/api/core";
 import FileTreeNode from './FileTreeNode.vue';
 import CreateWikiModal from './CreateWikiModal.vue';
 
+// 侧边栏折叠状态 - 在移动设备上默认收起
+const isSidebarCollapsed = ref(window.innerWidth <= 768);
+
+// 监听窗口大小变化，动态调整侧边栏状态
+window.addEventListener('resize', () => {
+  isSidebarCollapsed.value = window.innerWidth <= 768;
+});
+
 // 定义知识库类型
 interface Wiki {
   name: string;
@@ -325,6 +350,11 @@ const router = useRouter();
 
 // 存储每个文件夹的展开状态
 const folderExpandedStates: Ref<Record<string, boolean>> = ref({});
+
+// 切换侧边栏折叠状态
+const toggleSidebarCollapse = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+};
 
 // 控制知识库和工作区折叠状态
 const isWikiCollapsed = ref(false);
@@ -476,6 +506,66 @@ const handleFileClick = (node: FileNode) => {
   border-right: 1px solid #eee;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed {
+  width: 50px !important;
+  overflow: hidden;
+}
+
+/* 当侧边栏收起时，隐藏所有除了展开图标的内容 */
+.sidebar.collapsed .logo-container {
+  padding: 15px 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-bottom: none;
+  height: 64px;
+  box-sizing: border-box;
+}
+
+.sidebar.collapsed .logo {
+  display: none;
+}
+
+.sidebar.collapsed .nav-menu {
+  display: none;
+}
+
+.sidebar-toggle {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px;
+  min-height: 24px;
+  color: #666;
+}
+
+.sidebar .sidebar-toggle {
+  margin-right: 15px;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+  margin-right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  /* 默认在移动端显示较窄的侧边栏 */
+  .sidebar {
+    width: 200px;
+    padding-top: 20px; /* 在移动设备上，侧边栏内容下移20px */
+  }
+  
+  /* 移动端完全收起侧边栏 */
+  .sidebar.collapsed {
+    width: 50px !important;
+  }
 }
 
 .loading-item, .error-item, .empty-item {
@@ -524,6 +614,10 @@ const handleFileClick = (node: FileNode) => {
 .logo-container {
   padding: 20px;
   border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  height: 64px;
+  box-sizing: border-box;
 }
 
 .logo {
