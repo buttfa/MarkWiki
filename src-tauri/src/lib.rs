@@ -1,4 +1,5 @@
-pub mod wiki;
+mod git;
+mod wiki;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -22,10 +23,10 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            wiki::get_wiki_list,
-            wiki::get_wiki_file_structure,
-            wiki::create_local_wiki,
-            wiki::create_remote_wiki
+            wiki::interface::get_wiki_list,
+            wiki::interface::get_wiki_file_structure,
+            wiki::interface::create_local_wiki,
+            wiki::interface::create_remote_wiki
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
