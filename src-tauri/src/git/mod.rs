@@ -15,61 +15,55 @@ pub struct Repository {
 }
 
 impl Repository {
-    /// 打开已存在的 Git 仓库
+    /// 打开一个已存在的 Git 仓库
     ///
     /// # 参数
-    /// - `path`: Git 仓库的路径
+    /// * `path` - Git 仓库的路径
     ///
     /// # 返回值
-    /// - 成功: 返回封装后的 `Repository` 对象
-    /// - 失败: 返回包含错误信息的 `String`
-    pub fn open(path: &Path) -> Result<Self, String> {
+    /// * `Result<Self, ()>` - 成功时返回 `Ok(Repository)`，包含打开的仓库对象
+    /// * 失败时返回 `Err(())`
+    pub fn open(path: &Path) -> Result<Self, ()> {
         Ok(Self {
-            repo: git2::Repository::open(path).map_err(|e| format!("打开Git仓库失败: {}", e))?,
+            repo: git2::Repository::open(path).map_err(|_| ())?,
         })
     }
 
-    /// 在指定路径初始化新的 Git 仓库
+    /// 在指定路径初始化一个新的 Git 仓库
     ///
     /// # 参数
-    /// - `path`: 要初始化 Git 仓库的路径
+    /// * `path` - 要初始化仓库的路径
     ///
     /// # 返回值
-    /// - 成功: 返回封装后的 `Repository` 对象
-    /// - 失败: 返回包含错误信息的 `String`
-    pub fn init(path: &Path) -> Result<Self, String> {
+    /// * `Result<Self, ()>` - 成功时返回 `Ok(Repository)`，包含初始化的仓库对象
+    /// * 失败时返回 `Err(())`
+    pub fn init(path: &Path) -> Result<Self, ()> {
         Ok(Self {
-            repo: git2::Repository::init(path).map_err(|e| format!("初始化Git仓库失败: {}", e))?,
+            repo: git2::Repository::init(path).map_err(|_| ())?,
         })
     }
 
-    /// 从远程 URL 克隆 Git 仓库到本地路径
+    /// 从远程 URL 克隆 Git 仓库到指定路径
     ///
     /// # 参数
-    /// - `url`: 远程 Git 仓库的 URL
-    /// - `path`: 本地存储仓库的路径
+    /// * `url` - 远程仓库的 URL
+    /// * `path` - 本地克隆的目标路径
     ///
     /// # 返回值
-    /// - 成功: 返回封装后的 `Repository` 对象
-    /// - 失败: 返回包含错误信息的 `String`
-    pub fn clone(url: &str, path: &Path) -> Result<Self, String> {
+    /// * `Result<Self, ()>` - 成功时返回 `Ok(Repository)`，包含克隆的仓库对象
+    /// * 失败时返回 `Err(())`
+    pub fn clone(url: &str, path: &Path) -> Result<Self, ()> {
         Ok(Self {
-            repo: git2::Repository::clone(url, &path)
-                .map_err(|e| format!("克隆Git仓库失败: {}", e))?,
+            repo: git2::Repository::clone(url, &path).map_err(|_| ())?,
         })
     }
 
     /// 检查仓库是否配置了远程仓库
     ///
     /// # 返回值
-    /// - 成功: 返回布尔值，表示是否存在远程仓库配置
-    /// - 失败: 返回包含错误信息的 `String`
-    pub fn has_remote_repo(&self) -> Result<bool, String> {
-        Ok(self
-            .repo
-            .remotes()
-            .map_err(|e| format!("获取远程仓库信息失败: {}", e))?
-            .len()
-            > 0)
+    /// * `Result<bool, ()>` - 成功时返回 `Ok(bool)`，`true` 表示配置了远程仓库，`false` 表示未配置
+    /// * 失败时返回 `Err(())`
+    pub fn has_remote_repo(&self) -> Result<bool, ()> {
+        Ok(self.repo.remotes().map_err(|_| ())?.len() > 0)
     }
 }

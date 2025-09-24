@@ -4,13 +4,16 @@ use crate::wiki::get_wiki_storage_dir;
 use crate::wiki::FileNode;
 use crate::wiki::Wiki;
 
-/// 该函数用于获取指定知识库的文件结构。
+/// 获取指定知识库的文件结构
+///
+/// 该函数会递归遍历指定知识库的目录结构，构建完整的文件树结构并返回。
 ///
 /// # 参数
-/// * `wiki_name` - 知识库名称
+/// * `wiki_name` - 知识库名称，用于确定要查询的目标知识库
 ///
 /// # 返回值
-/// * `Result<FileNode, String>` - 成功时返回 `Ok(FileNode)`，失败时返回 `Err(String)`。其中 `FileNode` 表示知识库的文件结构，`String` 表示错误信息。
+/// * `Result<FileNode, String>` - 成功时返回 `Ok(FileNode)`，包含知识库的完整文件结构
+/// * 失败时返回 `Err(String)`，包含具体错误信息
 #[tauri::command]
 pub async fn get_wiki_file_structure(wiki_name: String) -> Result<FileNode, String> {
     // 构建目标知识库的存储目录
@@ -20,10 +23,14 @@ pub async fn get_wiki_file_structure(wiki_name: String) -> Result<FileNode, Stri
     build_file_tree(&target_wiki_dir)
 }
 
-/// 该函数用于获取MarkWiki运行路径下的知识库列表。它会遍历Wiki目录下的所有文件夹，检查每个文件夹是否为Git仓库，并判断是否配置了远程仓库。
+/// 获取MarkWiki运行路径下的所有知识库列表
+///
+/// 该函数会遍历Wiki目录下的所有文件夹，检查每个文件夹是否为Git仓库，并判断是否配置了远程仓库。
+/// 主要用于在应用程序界面中显示所有可用的知识库。
 ///
 /// # 返回值
-/// * `Result<Vec<Wiki>, String>` - 成功时返回 `Ok(Vec<Wiki>)`，失败时返回 `Err(String)`。其中 `Vec<Wiki>` 包含所有知识库的信息，`String` 表示错误信息。
+/// * `Result<Vec<Wiki>, String>` - 成功时返回 `Ok(Vec<Wiki>)`，包含所有知识库的基本信息
+/// * 失败时返回 `Err(String)`，包含具体错误信息
 #[tauri::command]
 pub async fn get_wiki_list() -> Result<Vec<Wiki>, String> {
     // 统计知识库信息
@@ -58,11 +65,15 @@ pub async fn get_wiki_list() -> Result<Vec<Wiki>, String> {
 
 /// 创建本地知识库
 ///
+/// 该函数会在本地创建一个新的知识库目录，并在其中初始化Git仓库。
+/// 如果创建过程中出现错误，会自动清理已创建的目录。
+///
 /// # 参数
-/// * `wiki_name` - 知识库名称
+/// * `wiki_name` - 要创建的知识库名称
 ///
 /// # 返回值
-/// * `Result<String, String>` - 成功时返回 `Ok(String)` 包含知识库路径，失败时返回 `Err(String)` 包含错误信息
+/// * `Result<String, String>` - 成功时返回 `Ok(String)`，包含知识库的完整路径
+/// * 失败时返回 `Err(String)`，包含具体错误信息
 #[tauri::command]
 pub async fn create_local_wiki(wiki_name: &str) -> Result<String, String> {
     // 构建目标知识库的存储目录
@@ -79,23 +90,27 @@ pub async fn create_local_wiki(wiki_name: &str) -> Result<String, String> {
     // 初始化 Git 仓库
     match git::Repository::init(&target_wiki_dir) {
         Ok(_) => Ok(target_wiki_dir.to_string_lossy().to_string()),
-        Err(e) => {
+        Err(_) => {
             // 删除已创建的目录
             std::fs::remove_dir_all(&target_wiki_dir)
                 .map_err(|e| format!("删除已创建知识库目录失败: {}", e))?;
             // 返回错误信息
-            Err(format!("初始化Git仓库失败: {}", e))
+            Err(format!("初始化Git仓库失败"))
         }
     }
 }
 
 /// 从远程URL创建知识库
 ///
+/// 该函数会从指定的远程Git仓库URL克隆内容，并在本地创建对应的知识库。
+/// 知识库名称会从URL中自动提取。如果克隆过程中出现错误，会自动清理已创建的目录。
+///
 /// # 参数
-/// * `remote_url` - 远程仓库URL
+/// * `remote_url` - 远程Git仓库的URL
 ///
 /// # 返回值
-/// * `Result<String, String>` - 成功时返回 `Ok(String)` 包含知识库路径，失败时返回 `Err(String)` 包含错误信息
+/// * `Result<String, String>` - 成功时返回 `Ok(String)`，包含克隆的知识库的完整路径
+/// * 失败时返回 `Err(String)`，包含具体错误信息
 #[tauri::command]
 pub async fn create_remote_wiki(remote_url: &str) -> Result<String, String> {
     // 从URL提取仓库名称
@@ -120,12 +135,12 @@ pub async fn create_remote_wiki(remote_url: &str) -> Result<String, String> {
     // 克隆远程仓库
     match git::Repository::clone(remote_url, &target_wiki_dir) {
         Ok(_) => Ok(target_wiki_dir.to_string_lossy().to_string()),
-        Err(e) => {
+        Err(_) => {
             // 删除已创建的目录
             std::fs::remove_dir_all(&target_wiki_dir)
                 .map_err(|e| format!("删除已创建知识库目录失败: {}", e))?;
             // 返回错误信息
-            Err(format!("克隆仓库失败: {}", e))
+            Err(format!("克隆仓库失败"))
         }
     }
 }
