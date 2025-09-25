@@ -1,11 +1,14 @@
 //! 知识库管理模块
-//! 
+//! 知识库管理模块
+//!
 //! 此模块提供了知识库的核心功能，包括知识库的创建、查询和管理。
 //! 它定义了知识库的数据结构，并实现了获取知识库列表、文件结构等功能。
 
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use crate::git;
 
 pub mod interface;
 
@@ -16,10 +19,169 @@ pub mod interface;
 /// # 字段
 /// * `name` - 知识库的名称，通常与存储目录名称一致
 /// * `has_remote_repo` - 布尔值，表示该知识库是否配置了远程Git仓库
+/// * `path` - 知识库的完整文件路径
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Wiki {
     name: String,
     has_remote_repo: bool,
+    path: String,
+}
+
+impl Wiki {
+    /// 根据名称获取知识库实例
+    ///
+    /// 该函数尝试根据指定的名称从存储目录中加载知识库。
+    /// 首先构建知识库的存储路径，然后检查该路径是否存在，
+    /// 最后尝试打开Git仓库并返回知识库实例。
+    ///
+    /// # 参数
+    /// * `name` - 知识库的名称
+    ///
+    /// # 返回值
+    /// * `Result<Self, ()>` - 成功时返回 `Ok(Wiki)`，包含知识库实例
+    /// * 失败时返回 `Err(())`，表示无法获取知识库实例（如路径不存在或不是Git仓库）
+    fn from_name(name: &str) -> Result<Self, ()> {
+        // 构建知识库的存储路径
+        let path = Self::get_wiki_storage_dir()
+            .map_err(|_| ())?
+            .join(name.to_string());
+        if !path.exists() {
+            return Err(());
+        }
+        // 检查是否为 git 仓库
+        let repo = match git::Repository::open(&path) {
+            Ok(repo) => repo,
+            Err(_) => {
+                return Err(());
+            }
+        };
+
+        // 构建知识库实例
+        Ok(Wiki {
+            name: name.to_string(),
+            has_remote_repo: repo.has_remote_repo().unwrap_or(false),
+            path: path.to_string_lossy().to_string(),
+        })
+    }
+
+    /// 检查指定名称的知识库是否存在
+    ///
+    /// 该函数通过尝试调用`from_name`方法来检查指定名称的知识库是否存在。
+    /// 如果`from_name`返回`Ok`，则表示知识库存在；否则表示不存在。
+    ///
+    /// # 参数
+    /// * `name` - 要检查的知识库名称
+    ///
+    /// # 返回值
+    /// * `bool` - 如果知识库存在返回`true`，否则返回`false`
+    fn exists(name: &str) -> bool {
+        Self::from_name(name).is_ok()
+    }
+
+    /// 创建本地知识库
+    ///
+    /// 该函数创建一个新的本地知识库，包括创建存储目录和初始化Git仓库。
+    /// 如果指定名称的知识库已经存在，则返回错误。
+    ///
+    /// # 参数
+    /// * `name` - 要创建的知识库名称
+    ///
+    /// # 返回值
+    /// * `Result<Self, ()>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库实例
+    /// * 失败时返回 `Err(())`，表示无法创建知识库（如路径已存在或创建目录失败）
+    fn create_local_wiki(name: &str) -> Result<Self, ()> {
+        // 构造知识库的存储路径
+        let path = Self::get_wiki_storage_dir()
+            .map_err(|_| ())?
+            .join(name.to_string());
+        if path.exists() {
+            return Err(());
+        }
+
+        // 创建知识库目录
+        fs::create_dir_all(&path).map_err(|_| ())?;
+        // 初始化 git 仓库
+        git::Repository::init(&path).map_err(|_| ())?;
+        Ok(Wiki {
+            name: name.to_string(),
+            has_remote_repo: false,
+            path: path.to_string_lossy().to_string(),
+        })
+    }
+
+    /// 从远程Git仓库创建知识库
+    ///
+    /// 该函数通过克隆远程Git仓库来创建新的知识库。
+    /// 如果指定名称的知识库已经存在，则返回错误。
+    /// 成功克隆后，会将`has_remote_repo`设置为`true`。
+    ///
+    /// # 参数
+    /// * `name` - 要创建的知识库名称
+    /// * `url` - 远程Git仓库的URL
+    ///
+    /// # 返回值
+    /// * `Result<Self, ()>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库实例
+    /// * 失败时返回 `Err(())`，表示无法创建知识库（如路径已存在或克隆失败）
+    fn create_remote_wiki(name: &str, url: &str) -> Result<Self, ()> {
+        // 构造知识库的存储路径
+        let path = Self::get_wiki_storage_dir()
+            .map_err(|_| ())?
+            .join(name.to_string());
+        if path.exists() {
+            return Err(());
+        }
+        // 克隆远程仓库
+        git::Repository::clone(url, &path).map_err(|_| ())?;
+        Ok(Wiki {
+            name: name.to_string(),
+            has_remote_repo: true,
+            path: path.to_string_lossy().to_string(),
+        })
+    }
+
+    /// 获取所有知识库的统一存储目录
+    ///
+    /// 该函数根据当前运行平台，返回MarkWiki应用存储知识库的统一目录路径。
+    /// 如果目录不存在，会自动创建该目录。
+    ///
+    /// # 返回值
+    /// * `Result<PathBuf, ()>` - 成功时返回 `Ok(PathBuf)`，包含知识库的统一存储目录
+    /// * 失败时返回 `Err(())`
+    ///
+    /// # 平台差异
+    /// * Android平台：使用临时目录下的markwiki/wiki目录
+    /// * Linux/Windows平台：使用可执行文件所在目录下的wiki目录
+    fn get_wiki_storage_dir() -> Result<PathBuf, ()> {
+        // Android 平台
+        #[cfg(target_os = "android")]
+        {
+            let wiki_dir = std::env::temp_dir().join("markwiki").join("wiki");
+            // 确保 wiki 目录存在
+            if !wiki_dir.exists() {
+                std::fs::create_dir_all(&wiki_dir).map_err(|_| ())?;
+            }
+            return Ok(wiki_dir);
+        }
+
+        // Linux/Windows 平台
+        #[cfg(not(target_os = "android"))]
+        {
+            // 获取 MarkWiki 可执行文件路径
+            let exe_path = std::env::current_exe().map_err(|_| ())?;
+
+            // 获取 MarkWiki 所在目录
+            let exe_dir = exe_path.parent().ok_or(())?;
+
+            // 构建知识库目录路径
+            let wiki_dir = exe_dir.join("wiki");
+
+            // 确保 wiki 目录存在
+            if !wiki_dir.exists() {
+                std::fs::create_dir_all(&wiki_dir).map_err(|_| ())?;
+            }
+            return Ok(wiki_dir);
+        }
+    }
 }
 
 /// 文件节点结构体，用于表示文件系统中的文件或目录
@@ -58,7 +220,7 @@ pub struct FileNode {
 /// * 对于文件，不会包含子节点信息
 fn build_file_tree(path: &Path) -> Result<FileNode, String> {
     // 获取文件或目录的元数据
-    let metadata = 
+    let metadata =
         fs::metadata(path).map_err(|e| format!("获取文件元数据失败: {:?}: {}", path, e))?;
 
     // 提取并转换文件或目录名称为字符串
@@ -116,51 +278,6 @@ fn build_file_tree(path: &Path) -> Result<FileNode, String> {
     }
 }
 
-/// 获取所有知识库的统一存储目录
-///
-/// 该函数根据当前运行平台，返回MarkWiki应用存储知识库的统一目录路径。
-/// 如果目录不存在，会自动创建该目录。
-///
-/// # 返回值
-/// * `Result<PathBuf, String>` - 成功时返回 `Ok(PathBuf)`，包含知识库的统一存储目录
-/// * 失败时返回 `Err(String)`，包含具体错误信息
-///
-/// # 平台差异
-/// * Android平台：使用临时目录下的markwiki/wiki目录
-/// * Linux/Windows平台：使用可执行文件所在目录下的wiki目录
-fn get_wiki_storage_dir() -> Result<PathBuf, String> {
-    // Android 平台
-    #[cfg(target_os = "android")]
-    {
-        let wiki_dir = std::env::temp_dir().join("markwiki").join("wiki");
-        // 确保 wiki 目录存在
-        if !wiki_dir.exists() {
-            std::fs::create_dir_all(&wiki_dir).map_err(|e| format!("创建知识库目录失败: {}", e))?;
-        }
-        return Ok(wiki_dir);
-    }
-
-    // Linux/Windows 平台
-    #[cfg(not(target_os = "android"))]
-    {
-        // 获取 MarkWiki 可执行文件路径
-        let exe_path = 
-            std::env::current_exe().map_err(|e| format!("获取可执行文件路径失败: {}", e))?;
-
-        // 获取 MarkWiki 所在目录
-        let exe_dir = exe_path.parent().ok_or("获取可执行文件目录失败")?;
-
-        // 构建知识库目录路径
-        let wiki_dir = exe_dir.join("wiki");
-
-        // 确保 wiki 目录存在
-        if !wiki_dir.exists() {
-            std::fs::create_dir_all(&wiki_dir).map_err(|e| format!("创建知识库目录失败: {}", e))?;
-        }
-        return Ok(wiki_dir);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -174,7 +291,7 @@ mod tests {
     #[test]
     fn test_get_wiki_storage_dir() {
         // 调用函数获取知识库目录
-        let wiki_dir = get_wiki_storage_dir().unwrap();
+        let wiki_dir = Wiki::get_wiki_storage_dir().unwrap();
 
         // 验证知识库目录名称为 "wiki"
         assert_eq!(wiki_dir.file_name().unwrap().to_str().unwrap(), "wiki");
