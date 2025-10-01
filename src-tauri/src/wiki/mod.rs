@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use crate::git;
 
-pub mod interface;
+pub mod command;
 
 /// 知识库项结构体，用于表示知识库的基本信息
 ///

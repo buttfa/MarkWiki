@@ -23,10 +23,10 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            wiki::interface::get_wiki_list,
-            wiki::interface::get_wiki_file_structure,
-            wiki::interface::create_local_wiki,
-            wiki::interface::create_remote_wiki
+            wiki::command::get_wiki_list,
+            wiki::command::get_wiki_file_structure,
+            wiki::command::create_local_wiki,
+            wiki::command::create_remote_wiki
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
