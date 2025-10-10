@@ -205,6 +205,7 @@ window.addEventListener('resize', () => {
 interface Wiki {
   name: string;
   has_remote_repo: boolean;
+  path: string;
 }
 
 // 创建知识库弹窗相关状态和方法
