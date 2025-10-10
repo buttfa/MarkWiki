@@ -5,6 +5,20 @@
     @close="closeCreateWikiModal"
     @success="onCreateWikiSuccess"
   />
+  
+  <!-- 确认弹窗组件 -->
+  <ConfirmModal
+    :visible="isConfirmModalVisible"
+    :title="confirmModalTitle"
+    :message="confirmModalMessage"
+    :confirm-text="confirmModalConfirmText"
+    :cancel-text="confirmModalCancelText"
+    :is-loading="isConfirmModalLoading"
+    :loading-text="confirmModalLoadingText"
+    @confirm="handleConfirmModalConfirm"
+    @cancel="handleConfirmModalCancel"
+  />
+  
   <div class="logo-container">
     <svg 
       class="icon sidebar-toggle" 
@@ -192,6 +206,7 @@ import { useRouter } from 'vue-router';
 import { invoke } from "@tauri-apps/api/core";
 import FileTreeNode from './FileTreeNode.vue';
 import CreateWikiModal from './CreateWikiModal.vue';
+import ConfirmModal from './ConfirmModal.vue';
 
 // 侧边栏折叠状态 - 在移动设备上默认收起
 const isSidebarCollapsed = ref(window.innerWidth <= 768);
@@ -228,6 +243,47 @@ const error = ref<string | null>(null);
 const workspaceItems: Ref<FileNode[]> = ref([]);
 const isWorkspaceLoading = ref(false);
 const workspaceError = ref<string | null>(null);
+
+// 确认弹窗相关状态
+const isConfirmModalVisible = ref(false);
+const confirmModalTitle = ref('');
+const confirmModalMessage = ref('');
+const confirmModalConfirmText = ref('确定');
+const confirmModalCancelText = ref('取消');
+const isConfirmModalLoading = ref(false);
+const confirmModalLoadingText = ref('处理中...');
+let confirmModalCallback: (() => Promise<void>) | null = null;
+
+// 显示确认弹窗
+const showConfirmModal = (title: string, message: string, callback: () => Promise<void>, confirmText = '确定', cancelText = '取消') => {
+  confirmModalTitle.value = title;
+  confirmModalMessage.value = message;
+  confirmModalConfirmText.value = confirmText;
+  confirmModalCancelText.value = cancelText;
+  confirmModalCallback = callback;
+  isConfirmModalVisible.value = true;
+};
+
+// 处理确认弹窗的确认按钮点击
+const handleConfirmModalConfirm = async () => {
+  if (confirmModalCallback && !isConfirmModalLoading.value) {
+    isConfirmModalLoading.value = true;
+    try {
+      await confirmModalCallback();
+    } catch (error) {
+      console.error('Confirm modal callback error:', error);
+      isConfirmModalVisible.value = false;
+    } finally {
+      isConfirmModalLoading.value = false;
+    }
+  }
+};
+
+// 处理确认弹窗的取消按钮点击
+const handleConfirmModalCancel = () => {
+  isConfirmModalVisible.value = false;
+  confirmModalCallback = null;
+};
 
 // 刷新知识库列表
 const refreshWikis = async () => {
@@ -435,16 +491,41 @@ const syncWiki = (wikiName: string) => {
 };
 
 const setupRemoteRepo = (wikiName: string) => {
-  // 这里将在后续实现设置远程仓库的逻辑
-  alert(`设置知识库 ${wikiName} 远程仓库功能将在后续实现`);
+  // 使用确认弹窗显示后续实现提示，不显示确认按钮
+  showConfirmModal(
+    '功能提示',
+    `设置知识库 ${wikiName} 远程仓库功能将在后续实现`,
+    async () => {
+      // 这里不做任何实际操作
+    },
+    '', // 不显示确认按钮
+    ''  // 不显示取消按钮
+  );
 };
 
 const deleteWiki = async (wikiName: string) => {
-  // 弹出确认对话框
-  confirm(`确定要删除知识库 "${wikiName}" 吗？此操作不可恢复！`);
-  
-  // 显示功能后续实现的提示
-  alert(`删除知识库 ${wikiName} 功能将在后续实现`);
+  // 使用确认弹窗显示确认信息
+  showConfirmModal(
+    '确认删除',
+    `确定要删除知识库 "${wikiName}" 吗？此操作不可恢复！`,
+    async () => {
+      // 先关闭当前弹窗
+      isConfirmModalVisible.value = false;
+      // 使用setTimeout确保前一个弹窗完全关闭后再显示新的弹窗
+      setTimeout(() => {
+        // 显示功能后续实现的提示
+        showConfirmModal(
+          '功能提示',
+          `删除知识库 ${wikiName} 功能将在后续实现`,
+          async () => {
+            // 这里不做任何实际操作
+          },
+          '', // 不显示确认按钮
+          ''  // 不显示取消按钮
+        );
+      }, 100);
+    }
+  );
 };
 
 const createItem = () => {
