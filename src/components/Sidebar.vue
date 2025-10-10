@@ -438,9 +438,31 @@ const setupRemoteRepo = (wikiName: string) => {
   alert(`设置知识库 ${wikiName} 远程仓库功能将在后续实现`);
 };
 
-const deleteWiki = (wikiName: string) => {
-  // 这里将在后续实现删除知识库的逻辑
-  alert(`删除知识库 ${wikiName} 功能将在后续实现`);
+const deleteWiki = async (wikiName: string) => {
+  // 弹出确认对话框
+  if (confirm(`确定要删除知识库 "${wikiName}" 吗？此操作不可恢复！`)) {
+    try {
+      // 调用后端删除知识库命令
+      await invoke('delete_wiki', { wikiName });
+      
+      // 删除成功后刷新知识库列表
+      await refreshWikis();
+      
+      // 如果当前选中的就是被删除的知识库，清除选中状态
+      if (selectedWikiName.value === wikiName) {
+        selectedWikiName.value = '';
+        workspaceItems.value = [];
+        navigateTo('/');
+      }
+      
+      // 显示成功提示
+      alert(`成功删除知识库 ${wikiName}`);
+    } catch (error) {
+      // 显示错误提示
+      console.error('删除知识库失败:', error);
+      alert(`删除知识库失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    }
+  }
 };
 
 const createItem = () => {

@@ -162,6 +162,35 @@ pub async fn create_remote_wiki(remote_url: &str) -> Result<String, String> {
     }
 }
 
+/// 删除知识库
+///
+/// # 参数
+/// * `wiki_name` - 知识库名称
+///
+/// # 返回值
+/// * `Result<String, String>` - 成功时返回 `Ok(String)` 包含成功信息，失败时返回 `Err(String)` 包含错误信息
+#[tauri::command]
+pub async fn delete_wiki(wiki_name: &str) -> Result<String, String> {
+    // 构建目标知识库的存储目录
+    let target_wiki_dir = get_wiki_storage_dir()?.join(wiki_name);
+
+    // 检查知识库目录是否存在
+    if !target_wiki_dir.exists() {
+        return Err(format!("知识库不存在: {}", wiki_name));
+    }
+
+    // 检查是否为目录
+    if !target_wiki_dir.is_dir() {
+        return Err(format!("指定的路径不是一个目录: {:?}", target_wiki_dir));
+    }
+
+    // 删除知识库目录
+    std::fs::remove_dir_all(&target_wiki_dir)
+        .map_err(|e| format!("删除知识库失败: {}", e))?;
+
+    Ok(format!("成功删除知识库: {}", wiki_name))
+}
+
 /// 递归构建文件夹节点树
 ///
 /// # 参数
