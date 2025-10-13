@@ -24,11 +24,6 @@ pub enum Error {
     /// 获取远程仓库信息失败
     #[error("Failed to get remotes: {0}")]
     GetRemotes(#[source] git2::Error),
-
-    /// Android 平台特定错误
-    #[cfg(target_os = "android")]
-    #[error("Android platform error: {0}")]
-    AndroidError(String),
 }
 
 /// Git 仓库的封装结构体
@@ -101,9 +96,7 @@ impl Repository {
             let mut builder = git2::build::RepoBuilder::new();
             builder.fetch_options(fetch_opts);
 
-            let repo = builder.clone(url, path).map_err(|e| {
-                Error::AndroidError(format!("Failed to clone repository on Android: {}", e))
-            })?;
+            let repo = builder.clone(url, path).map_err(Error::CloneRepository)?;
             Ok(Self { repo })
         }
     }

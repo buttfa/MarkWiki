@@ -27,6 +27,7 @@ pub enum Error {
     Utf8(#[from] std::str::Utf8Error),
 
     /// 路径转换错误
+    #[cfg(not(target_os = "android"))]
     #[error("Path conversion error: {0}")]
     Path(String),
 
