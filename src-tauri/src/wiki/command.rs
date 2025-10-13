@@ -19,10 +19,10 @@ pub async fn get_wiki_file_structure(wiki_name: String) -> Result<FileNode, Stri
     // 构建目标知识库的存储目录
     let target_wiki_dir = Wiki::from_name(&wiki_name)
         .map(|wiki| wiki.path)
-        .map_err(|_| format!("无法打开知识库 {}", wiki_name))?;
+        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
 
     // 构建文件树并返回
-    build_file_tree(&Path::new(&target_wiki_dir))
+    build_file_tree(Path::new(&target_wiki_dir)).map_err(|e| e.to_string())
 }
 
 /// 获取MarkWiki运行路径下的所有知识库列表
@@ -40,7 +40,7 @@ pub async fn get_wiki_list() -> Result<Vec<Wiki>, String> {
 
     // 遍历 Wikis 目录下的所有文件夹
     for entry in std::fs::read_dir(
-        &Wiki::get_wiki_storage_dir().map_err(|_| "无法打开所有知识库的统一存储目录")?,
+        &Wiki::get_wiki_storage_dir().map_err(|e| format!("无法打开所有知识库的统一存储目录: {}", e))?,
     )
     .map_err(|e| format!("读取知识库目录失败: {}", e))?
     {
@@ -58,7 +58,7 @@ pub async fn get_wiki_list() -> Result<Vec<Wiki>, String> {
         };
 
         // 尝试从知识库名称创建 Wiki 实例
-        if let Ok(wiki) = Wiki::from_name(&name) {
+        if let Ok(wiki) = Wiki::from_name(name) {
             wikis.push(wiki);
         }
     }
@@ -75,19 +75,18 @@ pub async fn get_wiki_list() -> Result<Vec<Wiki>, String> {
 /// * `wiki_name` - 要创建的知识库名称
 ///
 /// # 返回值
-/// * `Result<(), String>` - 成功时返回 `Ok(())`
+/// * `Result<Wiki, String>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库信息
 /// * 失败时返回 `Err(String)`，包含具体错误信息
 #[tauri::command]
-pub async fn create_local_wiki(wiki_name: &str) -> Result<(), String> {
+pub async fn create_local_wiki(wiki_name: &str) -> Result<Wiki, String> {
     // 检查知识库是否已存在
     if Wiki::exists(wiki_name) {
         return Err(format!("知识库 {} 已存在", wiki_name));
     }
 
-    // 创建知识库
+    // 创建知识库并返回新创建的Wiki实例
     Wiki::create_local_wiki(wiki_name)
-        .map(|_| ())
-        .map_err(|_| format!("创建本地知识库失败"))
+        .map_err(|e| format!("创建本地知识库失败: {}", e))
 }
 
 /// 从远程URL创建知识库
@@ -99,14 +98,14 @@ pub async fn create_local_wiki(wiki_name: &str) -> Result<(), String> {
 /// * `remote_url` - 远程Git仓库的URL
 ///
 /// # 返回值
-/// * `Result<(), String>` - 成功时返回 `Ok(())`
+/// * `Result<Wiki, String>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库信息
 /// * 失败时返回 `Err(String)`，包含具体错误信息
 #[tauri::command]
-pub async fn create_remote_wiki(remote_url: &str) -> Result<(), String> {
+pub async fn create_remote_wiki(remote_url: &str) -> Result<Wiki, String> {
     // 从URL提取仓库名称
     let wiki_name = remote_url
         .split('/')
-        .last()
+        .next_back()
         .and_then(|s| s.split('.').next())
         .ok_or("从URL提取仓库名称失败")?;
 
@@ -117,6 +116,5 @@ pub async fn create_remote_wiki(remote_url: &str) -> Result<(), String> {
 
     // 从远程URL创建知识库
     Wiki::create_remote_wiki(wiki_name, remote_url)
-        .map(|_| ())
-        .map_err(|_| format!("从远程URL创建知识库失败"))
+        .map_err(|e| format!("从远程URL创建知识库失败: {}", e))
 }
