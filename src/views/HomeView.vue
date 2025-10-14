@@ -1,12 +1,20 @@
 <template>
   <div class="home-container">
-    <div class="welcome-section">
-      <h1>欢迎使用 MarkWiki</h1>
-      <p>一个简单而强大的个人知识管理工具</p>
+    <div class="features-section">
+      <div class="features-grid">
+        <div class="feature-card">
+          <h1>欢迎使用 MarkWiki</h1>
+          <p>一个简单而强大的个人知识管理工具</p>
+        </div>
+      </div>    
+    </div>
+    <div class="features-section">
+      <div class="features-grid">
+        <h2>功能特点</h2>
+      </div>
     </div>
 
     <div class="features-section">
-      <h2>功能特点</h2>
       <div class="features-grid">
         <div class="feature-card">
           <svg class="feature-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
