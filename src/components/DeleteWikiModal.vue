@@ -42,6 +42,11 @@ const handleDelete = async () => {
 </script>
 
 <style scoped>
+.modal-content {
+  text-align: center;
+  margin: 1rem 0;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
