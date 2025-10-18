@@ -47,6 +47,11 @@ const close = () => {
 </script>
 
 <style scoped>
+.sync-info p {
+  text-align: center;
+  margin: 1rem 0;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
