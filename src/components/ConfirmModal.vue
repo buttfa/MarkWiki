@@ -33,13 +33,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+
 
 // 定义props
 const props = defineProps<{
   visible: boolean;
-  title: string;
-  message: string;
+  title?: string;
+  message?: string;
   confirmText?: string;
   cancelText?: string;
   isLoading?: boolean;
@@ -115,68 +115,64 @@ const handleOverlayClick = () => {
 }
 
 .button-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 40px; /* 确保即使没有按钮，也有足够的空间 */
-}
-
-.btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.confirm-btn {
-  background-color: black;
-  color: white;
-}
-
-.confirm-btn:hover:not(:disabled) {
-  background-color: #333;
-}
-
-.confirm-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.loading-spinner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s ease-in-out infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
-}
 
-.cancel-btn {
-  background-color: #f5f5f5;
-  color: #333;
-}
+  .btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: 100%;
+    font-weight: 500;
+  }
 
-.cancel-btn:hover:not(:disabled) {
-  background-color: #e0e0e0;
-}
+  .confirm-btn {
+    background-color: black;
+    color: white;
+  }
 
-.cancel-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+  .confirm-btn:hover:not(:disabled) {
+    background-color: #333;
+  }
+
+  .cancel-btn {
+    background-color: #f5f5f5;
+    color: #333;
+  }
+
+  .cancel-btn:hover:not(:disabled) {
+    background-color: #e0e0e0;
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .loading-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 </style>

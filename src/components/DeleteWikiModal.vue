@@ -16,12 +16,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+
 
 // 定义props
 const props = defineProps<{
   visible: boolean;
-  wikiName: string;
+  wikiName?: string;
 }>();
 
 // 定义emit
@@ -84,27 +84,28 @@ const handleDelete = async () => {
 }
 
 .btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
+  padding: 10px 16px;
   border: none;
-  font-size: 1rem;
+  border-radius: 4px;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s;
   font-weight: 500;
 }
 
 .delete-btn {
-  background-color: #d32f2f;
-  color: #ffffff;
+  background-color: black;
+  color: white;
 }
 
 .delete-btn:hover {
-  background-color: #b71c1c;
+  background-color: #333;
+  color: white;
 }
 
 .cancel-btn {
   background-color: #f5f5f5;
-  color: #333333;
+  color: #333;
 }
 
 .cancel-btn:hover {

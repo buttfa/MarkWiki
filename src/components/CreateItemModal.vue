@@ -158,39 +158,61 @@ label {
 }
 
 .button-group {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 1rem;
-}
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 1rem;
+  }
 
-.btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 4px;
-  border: none;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
-}
+  .btn {
+    padding: 10px 16px;
+    border-radius: 4px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-weight: 500;
+  }
 
-.create-btn {
-  background-color: #000000;
-  color: #ffffff;
-}
+  .create-btn {
+    background-color: black;
+    color: white;
+  }
 
-.create-btn:hover:not(:disabled) {
-  background-color: #333333;
-}
+  .create-btn:hover:not(:disabled) {
+    background-color: #333;
+  }
 
-.cancel-btn {
-  background-color: #f5f5f5;
-  color: #333333;
-}
+  .cancel-btn {
+    background-color: #f5f5f5;
+    color: #333;
+  }
 
-.cancel-btn:hover:not(:disabled) {
-  background-color: #e0e0e0;
-}
+  .cancel-btn:hover:not(:disabled) {
+    background-color: #e0e0e0;
+  }
+
+  .loading-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 
 .btn:disabled {
   opacity: 0.6;

@@ -4,19 +4,15 @@
       <h2 class="modal-title">同步知识库</h2>
       
       <div class="sync-info">
-        <p>正在同步知识库 "{{ props.wikiName }}"...</p>
-        <div class="sync-progress">
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: progress + '%' }"></div>
-          </div>
-          <span class="progress-text">{{ progress }}%</span>
-        </div>
-        <p v-if="syncMessage" class="sync-message">{{ syncMessage }}</p>
+        <p>是否同步知识库 "{{ props.wikiName }}"？</p>
       </div>
       
       <div class="button-group">
-        <button class="btn cancel-btn" @click="close" :disabled="isSyncing">
-          {{ isSyncing ? '同步中...' : '关闭' }}
+        <button class="btn confirm-btn" @click="confirmSync">
+          确定
+        </button>
+        <button class="btn cancel-btn" @click="close">
+          取消
         </button>
       </div>
     </div>
@@ -24,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+// 不需要ref导入，因为我们不再使用响应式数据
 
 // 定义props
 const props = defineProps<{
@@ -35,88 +31,19 @@ const props = defineProps<{
 // 定义emit
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'sync-start'): void;
+  (e: 'show-feature-notice'): void;
 }>();
 
-const isSyncing = ref(false);
-const progress = ref(0);
-const syncMessage = ref('');
-let progressInterval: number | null = null;
-
-// 模拟进度更新
-const updateProgress = () => {
-  if (progress.value < 100) {
-    // 随机增加进度，模拟真实同步过程
-    const increment = Math.random() * 10 + 5;
-    progress.value = Math.min(progress.value + increment, 100);
-    
-    // 更新同步消息
-    if (progress.value < 30) {
-      syncMessage.value = '正在连接远程仓库...';
-    } else if (progress.value < 60) {
-      syncMessage.value = '正在获取最新内容...';
-    } else if (progress.value < 90) {
-      syncMessage.value = '正在合并更改...';
-    } else {
-      syncMessage.value = '同步完成';
-    }
-  } else {
-    // 同步完成
-    isSyncing.value = false;
-    if (progressInterval) {
-      clearInterval(progressInterval);
-      progressInterval = null;
-    }
-    // 延迟关闭，让用户看到完成状态
-    setTimeout(() => {
-      close();
-    }, 1000);
-  }
+// 显示功能后续实现提示
+const confirmSync = () => {
+  // 触发事件让父组件显示统一的功能后续实现提示
+  emit('show-feature-notice');
 };
 
 // 关闭弹窗
 const close = () => {
-  if (!isSyncing.value) {
-    emit('close');
-    resetState();
-  }
+  emit('close');
 };
-
-// 重置状态
-const resetState = () => {
-  isSyncing.value = false;
-  progress.value = 0;
-  syncMessage.value = '';
-  if (progressInterval) {
-    clearInterval(progressInterval);
-    progressInterval = null;
-  }
-};
-
-// 开始同步
-const startSync = () => {
-  isSyncing.value = true;
-  progress.value = 0;
-  syncMessage.value = '';
-  emit('sync-start');
-  
-  // 开始模拟进度更新
-  progressInterval = window.setInterval(updateProgress, 500);
-};
-
-// 监听visible变化，自动开始同步
-onMounted(() => {
-  if (props.visible) {
-    startSync();
-  }
-});
-
-// 清理定时器
-onUnmounted(() => {
-  if (progressInterval) {
-    clearInterval(progressInterval);
-  }
-});
 </script>
 
 <style scoped>
@@ -192,17 +119,27 @@ onUnmounted(() => {
 
 .button-group {
   display: flex;
+  gap: 10px;
   justify-content: flex-end;
 }
 
 .btn {
-  padding: 0.75rem 1.5rem;
+  padding: 10px 16px;
   border-radius: 4px;
   border: none;
-  font-size: 1rem;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s;
   font-weight: 500;
+}
+
+.confirm-btn {
+  background-color: black;
+  color: white;
+}
+
+.confirm-btn:hover {
+  background-color: #333;
 }
 
 .cancel-btn {
@@ -210,7 +147,7 @@ onUnmounted(() => {
   color: #333333;
 }
 
-.cancel-btn:hover:not(:disabled) {
+.cancel-btn:hover {
   background-color: #e0e0e0;
 }
 

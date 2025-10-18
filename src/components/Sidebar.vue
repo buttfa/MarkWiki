@@ -6,6 +6,34 @@
     @success="onCreateWikiSuccess"
   />
   
+  <DeleteWikiModal
+    :visible="isDeleteWikiModalVisible"
+    :wiki-name="selectedWikiName || ''"
+    @close="closeDeleteWikiModal"
+    @delete="confirmDeleteWiki"
+  />
+  
+  <CreateItemModal
+    :visible="isCreateItemModalVisible"
+    :wiki-name="selectedWikiName || ''"
+    @close="closeCreateItemModal"
+    @create="onCreateItemSuccess"
+  />
+  
+  <SyncWikiModal
+    :visible="isSyncWikiModalVisible"
+    :wiki-name="selectedWikiName || ''"
+    @close="closeSyncWikiModal"
+    @show-feature-notice="showSyncFeatureNotice"
+  />
+  
+  <SetupRemoteRepoModal
+    :visible="isSetupRemoteRepoModalVisible"
+    :wiki-name="selectedWikiName || ''"
+    @close="closeSetupRemoteRepoModal"
+    @confirm="handleSetupRemoteRepoConfirm"
+  />
+  
   <!-- 确认弹窗组件 -->
   <ConfirmModal
     :visible="isConfirmModalVisible"
@@ -96,7 +124,7 @@
                 <span>{{ wiki.name }}</span>
               </div>
               <div v-if="expandedWikiName === wiki.name" class="wiki-subitems">
-                <div v-if="wiki.has_remote_repo" class="nav-item" @click="syncWiki(wiki.name)">
+                <div class="nav-item" @click="syncWiki(wiki.name)">
                   <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <polyline points="1 20 1 14 7 14"></polyline>
@@ -207,6 +235,10 @@ import { invoke } from "@tauri-apps/api/core";
 import FileTreeNode from './FileTreeNode.vue';
 import CreateWikiModal from './CreateWikiModal.vue';
 import ConfirmModal from './ConfirmModal.vue';
+import SyncWikiModal from './SyncWikiModal.vue';
+import DeleteWikiModal from './DeleteWikiModal.vue';
+import CreateItemModal from './CreateItemModal.vue';
+import SetupRemoteRepoModal from './SetupRemoteRepoModal.vue';
 
 // 侧边栏折叠状态 - 在移动设备上默认收起
 const isSidebarCollapsed = ref(window.innerWidth <= 768);
@@ -225,6 +257,20 @@ interface Wiki {
 
 // 创建知识库弹窗相关状态和方法
 const isCreateWikiModalVisible = ref(false);
+
+// 同步知识库弹窗相关状态
+const isSyncWikiModalVisible = ref(false);
+
+// 移除未使用的设置远程仓库功能
+
+// 创建文件/文件夹弹窗相关状态
+const isCreateItemModalVisible = ref(false);
+
+// 设置远程仓库弹窗相关状态
+const isSetupRemoteRepoModalVisible = ref(false);
+
+// 删除知识库弹窗相关状态
+const isDeleteWikiModalVisible = ref(false);
 
 // 定义文件节点类型
 interface FileNode {
@@ -486,15 +532,48 @@ const onCreateWikiSuccess = async () => {
 };
 
 const syncWiki = (wikiName: string) => {
-  // 这里将在后续实现同步知识库的逻辑
-  alert(`同步知识库 ${wikiName} 功能将在后续实现`);
+  selectedWikiName.value = wikiName;
+  isSyncWikiModalVisible.value = true;
 };
 
-const setupRemoteRepo = (wikiName: string) => {
-  // 使用确认弹窗显示后续实现提示，不显示确认按钮
+const closeSyncWikiModal = () => {
+  isSyncWikiModalVisible.value = false;
+};
+
+const showSyncFeatureNotice = () => {
+  // 先关闭同步弹窗
+  isSyncWikiModalVisible.value = false;
+  
+  // 使用setTimeout确保前一个弹窗完全关闭后再显示新的弹窗
+  setTimeout(() => {
+    // 显示功能后续实现的提示
+    showConfirmModal(
+      '功能提示',
+      `同步知识库功能将在后续实现`,
+      async () => {
+        // 这里不做任何实际操作
+      },
+      '', // 不显示确认按钮
+      ''  // 不显示取消按钮
+    );
+  }, 100);
+};
+
+const closeCreateItemModal = () => {
+  isCreateItemModalVisible.value = false;
+};
+
+const closeSetupRemoteRepoModal = () => {
+  isSetupRemoteRepoModalVisible.value = false;
+};
+
+const onCreateItemSuccess = async (_type: 'file' | 'folder', _name: string, _parentPath?: string) => {
+  closeCreateItemModal();
+  
+  // 显示功能后续实现的提示
   showConfirmModal(
     '功能提示',
-    `设置知识库 ${wikiName} 远程仓库功能将在后续实现`,
+    `创建文件/文件夹功能将在后续实现`,
     async () => {
       // 这里不做任何实际操作
     },
@@ -503,34 +582,77 @@ const setupRemoteRepo = (wikiName: string) => {
   );
 };
 
-const deleteWiki = async (wikiName: string) => {
-  // 使用确认弹窗显示确认信息
-  showConfirmModal(
-    '确认删除',
-    `确定要删除知识库 "${wikiName}" 吗？此操作不可恢复！`,
-    async () => {
-      // 先关闭当前弹窗
-      isConfirmModalVisible.value = false;
-      // 使用setTimeout确保前一个弹窗完全关闭后再显示新的弹窗
-      setTimeout(() => {
-        // 显示功能后续实现的提示
-        showConfirmModal(
-          '功能提示',
-          `删除知识库 ${wikiName} 功能将在后续实现`,
-          async () => {
-            // 这里不做任何实际操作
-          },
-          '', // 不显示确认按钮
-          ''  // 不显示取消按钮
-        );
-      }, 100);
-    }
-  );
+const deleteWiki = (wikiName: string) => {
+  selectedWikiName.value = wikiName;
+  isDeleteWikiModalVisible.value = true;
 };
 
+const closeDeleteWikiModal = () => {
+  isDeleteWikiModalVisible.value = false;
+};
+
+const confirmDeleteWiki = async () => {
+  // 先关闭删除弹窗
+  isDeleteWikiModalVisible.value = false;
+  
+  // 使用setTimeout确保前一个弹窗完全关闭后再显示新的弹窗
+  setTimeout(() => {
+    // 显示功能后续实现的提示
+    showConfirmModal(
+      '功能提示',
+      `删除知识库 ${selectedWikiName.value} 功能将在后续实现`,
+      async () => {
+        // 这里不做任何实际操作
+      },
+      '', // 不显示确认按钮
+      ''  // 不显示取消按钮
+    );
+  }, 100);
+};
+
+const setupRemoteRepo = (wikiName: string) => {
+  // 保存当前选中的知识库名称
+  selectedWikiName.value = wikiName;
+  // 打开设置远程仓库弹窗
+  isSetupRemoteRepoModalVisible.value = true;
+};
+
+const handleSetupRemoteRepoConfirm = async (url: string) => {
+  // 先关闭弹窗
+  isSetupRemoteRepoModalVisible.value = false;
+  
+  try {
+    // 这里可以添加实际的设置远程仓库的逻辑
+    // 目前显示功能后续实现的提示
+    showConfirmModal(
+      '设置成功',
+      `已成功设置远程仓库: ${url}\n实际功能将在后续版本实现`,
+      async () => {
+        // 这里不做任何实际操作
+      },
+      '', // 不显示确认按钮
+      ''  // 不显示取消按钮
+    );
+  } catch (error) {
+    console.error('设置远程仓库失败:', error);
+    showConfirmModal(
+      '设置失败',
+      '设置远程仓库时发生错误，请稍后重试',
+      async () => {
+        // 这里不做任何实际操作
+      },
+      '', // 不显示确认按钮
+      ''  // 不显示取消按钮
+    );
+  }
+};
+
+// 删除知识库方法已移至上面
+
 const createItem = () => {
-  // 这里将在后续实现创建文件/文件夹的逻辑
-  alert('创建文件/文件夹功能将在后续实现');
+  if (selectedWikiName.value) {
+    isCreateItemModalVisible.value = true;
+  }
 };
 
 // 切换文件夹展开/收起状态
