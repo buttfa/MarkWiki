@@ -124,7 +124,7 @@
                 <span>{{ wiki.name }}</span>
               </div>
               <div v-if="expandedWikiName === wiki.name" class="wiki-subitems">
-                <div class="nav-item" @click="syncWiki(wiki.name)">
+                <div class="nav-item" @click="syncWiki(wiki.name)" v-if="wiki.has_remote_repo">
                   <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <polyline points="1 20 1 14 7 14"></polyline>
