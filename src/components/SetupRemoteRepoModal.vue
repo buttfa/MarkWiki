@@ -145,33 +145,34 @@ label {
 
 .button-group {
   display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 1rem;
 }
 
 .btn {
-  padding: 0.75rem 1.5rem;
+  padding: 10px 16px;
   border-radius: 4px;
   border: none;
-  font-size: 1rem;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s;
   font-weight: 500;
+  width: 100%;
 }
 
 .confirm-btn {
-  background-color: #000000;
-  color: #ffffff;
+  background-color: black;
+  color: white;
 }
 
 .confirm-btn:hover:not(:disabled) {
-  background-color: #333333;
+  background-color: #333;
 }
 
 .cancel-btn {
   background-color: #f5f5f5;
-  color: #333333;
+  color: #333;
 }
 
 .cancel-btn:hover:not(:disabled) {

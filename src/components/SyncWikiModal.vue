@@ -120,8 +120,9 @@ const close = () => {
 
 .button-group {
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  justify-content: flex-end;
+  margin-top: 1rem;
 }
 
 .btn {
@@ -145,7 +146,7 @@ const close = () => {
 
 .cancel-btn {
   background-color: #f5f5f5;
-  color: #333333;
+  color: #333;
 }
 
 .cancel-btn:hover {

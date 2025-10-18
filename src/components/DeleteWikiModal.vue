@@ -80,8 +80,9 @@ const handleDelete = async () => {
 
 .button-group {
   display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 1rem;
 }
 
 .btn {

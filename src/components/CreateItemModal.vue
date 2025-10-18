@@ -11,7 +11,6 @@
       </div>
       
       <div class="form-group">
-        <label for="itemName">名称</label>
         <input
           type="text"
           id="itemName"
