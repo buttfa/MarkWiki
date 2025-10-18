@@ -7,8 +7,46 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 
 use crate::git;
+
+/// 知识库操作可能出现的错误类型
+#[derive(Error, Debug)]
+pub enum Error {
+    /// IO 错误
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    /// Git 操作错误
+    #[error("Git operation error: {0}")]
+    Git(#[from] crate::git::Error),
+
+    /// UTF-8 转换错误
+    #[error("UTF-8 conversion error: {0}")]
+    Utf8(#[from] std::str::Utf8Error),
+
+    /// 路径转换错误
+    #[cfg(not(target_os = "android"))]
+    #[error("Path conversion error: {0}")]
+    Path(String),
+
+    /// 知识库已存在错误
+    #[error("Wiki already exists: {0}")]
+    AlreadyExists(String),
+
+    /// 知识库不存在错误
+    #[error("Wiki not found: {0}")]
+    NotFound(String),
+
+    /// 获取知识库存储目录失败
+    #[error("Failed to get wiki storage directory")]
+    StorageDir,
+
+    /// 构建文件树失败
+    #[error("Failed to build file tree: {0}")]
+    BuildFileTree(String),
+}
 
 pub mod command;
 
@@ -40,26 +78,25 @@ impl Wiki {
     /// # 返回值
     /// * `Result<Self, ()>` - 成功时返回 `Ok(Wiki)`，包含知识库实例
     /// * 失败时返回 `Err(())`，表示无法获取知识库实例（如路径不存在或不是Git仓库）
-    fn from_name(name: &str) -> Result<Self, ()> {
+    fn from_name(name: &str) -> Result<Self, Error> {
         // 构建知识库的存储路径
         let path = Self::get_wiki_storage_dir()
-            .map_err(|_| ())?
-            .join(name.to_string());
+            .map_err(|_| Error::StorageDir)?
+            .join(name);
         if !path.exists() {
-            return Err(());
+            return Err(Error::NotFound(format!(
+                "知识库路径不存在: {}",
+                path.display()
+            )));
         }
         // 检查是否为 git 仓库
-        let repo = match git::Repository::open(&path) {
-            Ok(repo) => repo,
-            Err(_) => {
-                return Err(());
-            }
-        };
+        let repo = git::Repository::open(&path)?;
 
         // 构建知识库实例
+        let has_remote_repo = repo.has_remote_repo().unwrap_or(false);
         Ok(Wiki {
             name: name.to_string(),
-            has_remote_repo: repo.has_remote_repo().unwrap_or(false),
+            has_remote_repo,
             path: path.to_string_lossy().to_string(),
         })
     }
@@ -87,21 +124,24 @@ impl Wiki {
     /// * `name` - 要创建的知识库名称
     ///
     /// # 返回值
-    /// * `Result<Self, ()>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库实例
-    /// * 失败时返回 `Err(())`，表示无法创建知识库（如路径已存在或创建目录失败）
-    fn create_local_wiki(name: &str) -> Result<Self, ()> {
+    /// * `Result<Self, Error>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库实例
+    /// * 失败时返回 `Err(Error)`，表示无法创建知识库（如路径已存在或创建目录失败）
+    fn create_local_wiki(name: &str) -> Result<Self, Error> {
         // 构造知识库的存储路径
         let path = Self::get_wiki_storage_dir()
-            .map_err(|_| ())?
-            .join(name.to_string());
+            .map_err(|_| Error::StorageDir)?
+            .join(name);
         if path.exists() {
-            return Err(());
+            return Err(Error::AlreadyExists(format!(
+                "知识库已存在: {}",
+                path.display()
+            )));
         }
 
         // 创建知识库目录
-        fs::create_dir_all(&path).map_err(|_| ())?;
+        fs::create_dir_all(&path)?;
         // 初始化 git 仓库
-        git::Repository::init(&path).map_err(|_| ())?;
+        git::Repository::init(&path)?;
         Ok(Wiki {
             name: name.to_string(),
             has_remote_repo: false,
@@ -120,18 +160,21 @@ impl Wiki {
     /// * `url` - 远程Git仓库的URL
     ///
     /// # 返回值
-    /// * `Result<Self, ()>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库实例
-    /// * 失败时返回 `Err(())`，表示无法创建知识库（如路径已存在或克隆失败）
-    fn create_remote_wiki(name: &str, url: &str) -> Result<Self, ()> {
+    /// * `Result<Self, Error>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库实例
+    /// * 失败时返回 `Err(Error)`，表示无法创建知识库（如路径已存在或克隆失败）
+    fn create_remote_wiki(name: &str, url: &str) -> Result<Self, Error> {
         // 构造知识库的存储路径
         let path = Self::get_wiki_storage_dir()
-            .map_err(|_| ())?
-            .join(name.to_string());
+            .map_err(|_| Error::StorageDir)?
+            .join(name);
         if path.exists() {
-            return Err(());
+            return Err(Error::AlreadyExists(format!(
+                "知识库已存在: {}",
+                path.display()
+            )));
         }
         // 克隆远程仓库
-        git::Repository::clone(url, &path).map_err(|_| ())?;
+        git::Repository::clone(url, &path)?;
         Ok(Wiki {
             name: name.to_string(),
             has_remote_repo: true,
@@ -145,41 +188,43 @@ impl Wiki {
     /// 如果目录不存在，会自动创建该目录。
     ///
     /// # 返回值
-    /// * `Result<PathBuf, ()>` - 成功时返回 `Ok(PathBuf)`，包含知识库的统一存储目录
-    /// * 失败时返回 `Err(())`
+    /// * `Result<PathBuf, Error>` - 成功时返回 `Ok(PathBuf)`，包含知识库的统一存储目录
+    /// * 失败时返回 `Err(Error)`
     ///
     /// # 平台差异
     /// * Android平台：使用临时目录下的markwiki/wiki目录
     /// * Linux/Windows平台：使用可执行文件所在目录下的wiki目录
-    fn get_wiki_storage_dir() -> Result<PathBuf, ()> {
+    fn get_wiki_storage_dir() -> Result<PathBuf, Error> {
         // Android 平台
         #[cfg(target_os = "android")]
         {
             let wiki_dir = std::env::temp_dir().join("markwiki").join("wiki");
             // 确保 wiki 目录存在
             if !wiki_dir.exists() {
-                std::fs::create_dir_all(&wiki_dir).map_err(|_| ())?;
+                std::fs::create_dir_all(&wiki_dir)?;
             }
-            return Ok(wiki_dir);
+            Ok(wiki_dir)
         }
 
         // Linux/Windows 平台
         #[cfg(not(target_os = "android"))]
         {
             // 获取 MarkWiki 可执行文件路径
-            let exe_path = std::env::current_exe().map_err(|_| ())?;
+            let exe_path = std::env::current_exe()?;
 
             // 获取 MarkWiki 所在目录
-            let exe_dir = exe_path.parent().ok_or(())?;
+            let exe_dir = exe_path
+                .parent()
+                .ok_or(Error::Path("无法获取可执行文件所在目录".to_string()))?;
 
             // 构建知识库目录路径
             let wiki_dir = exe_dir.join("wiki");
 
             // 确保 wiki 目录存在
             if !wiki_dir.exists() {
-                std::fs::create_dir_all(&wiki_dir).map_err(|_| ())?;
+                std::fs::create_dir_all(&wiki_dir)?;
             }
-            return Ok(wiki_dir);
+            Ok(wiki_dir)
         }
     }
 }
@@ -211,39 +256,41 @@ pub struct FileNode {
 /// * `path` - 要构建文件树的根路径，可以是文件或目录
 ///
 /// # 返回值
-/// * `Result<FileNode, String>` - 成功时返回 `Ok(FileNode)`，包含构建的文件节点树
-/// * 失败时返回 `Err(String)`，包含具体错误信息
+/// * `Result<FileNode, Error>` - 成功时返回 `Ok(FileNode)`，包含构建的文件节点树
+/// * 失败时返回 `Err(Error)`，包含具体错误信息
 ///
 /// # 实现细节
 /// * 对于目录，会递归遍历其所有子项并构建子节点树
 /// * 子节点会按名称排序，目录排在文件前面
 /// * 对于文件，不会包含子节点信息
-fn build_file_tree(path: &Path) -> Result<FileNode, String> {
+fn build_file_tree(path: &Path) -> Result<FileNode, Error> {
     // 获取文件或目录的元数据
-    let metadata =
-        fs::metadata(path).map_err(|e| format!("获取文件元数据失败: {:?}: {}", path, e))?;
+    let metadata = fs::metadata(path)
+        .map_err(|e| Error::BuildFileTree(format!("获取文件元数据失败: {:?}: {}", path, e)))?;
 
     // 提取并转换文件或目录名称为字符串
     let name = path
         .file_name()
         .and_then(|n| n.to_str())
-        .ok_or_else(|| format!("获取文件名失败: {:?}", path))?
+        .ok_or_else(|| Error::BuildFileTree(format!("获取文件名失败: {:?}", path)))?
         .to_string();
 
     // 转换路径为字符串表示
     let path_str = path
         .to_str()
-        .ok_or_else(|| format!("将路径转换为字符串失败: {:?}", path))?
+        .ok_or_else(|| Error::BuildFileTree(format!("将路径转换为字符串失败: {:?}", path)))?
         .to_string();
 
     // 如果是目录，递归构建子节点树
     if metadata.is_dir() {
         let mut children = Vec::new();
-        let entries = fs::read_dir(path).map_err(|e| format!("读取目录失败: {:?}: {}", path, e))?;
+        let entries = fs::read_dir(path)
+            .map_err(|e| Error::BuildFileTree(format!("读取目录失败: {:?}: {}", path, e)))?;
 
         // 遍历目录中的所有条目
         for entry in entries {
-            let entry = entry.map_err(|e| format!("读取目录条目失败: {}", e))?;
+            let entry =
+                entry.map_err(|e| Error::BuildFileTree(format!("读取目录条目失败: {}", e)))?;
             let child_path = entry.path();
             // 递归构建子节点
             children.push(build_file_tree(&child_path)?);
