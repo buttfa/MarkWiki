@@ -70,11 +70,12 @@ const close = () => {
 }
 
 .modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: #333;
-}
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+  }
 
 .sync-info {
   margin-bottom: 1.5rem;

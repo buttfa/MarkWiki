@@ -93,9 +93,10 @@ const handleOverlayClick = () => {
 
 .modal-title {
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
   margin-bottom: 20px;
   text-align: center;
+  color: #333;
 }
 
 /* 当只有一个按钮时，居中显示 */

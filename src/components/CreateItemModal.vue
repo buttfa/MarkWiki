@@ -119,11 +119,12 @@ const handleCreate = async () => {
 }
 
 .modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: #333;
-}
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: #333;
+    text-align: center;
+  }
 
 .form-group {
   margin-bottom: 1.5rem;

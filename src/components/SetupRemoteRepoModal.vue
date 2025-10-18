@@ -4,16 +4,15 @@
       <h2 class="modal-title">设置知识库远程仓库</h2>
       
       <div class="form-group">
-        <label for="remoteUrl">远程仓库链接</label>
-        <input
-          type="text"
-          id="remoteUrl"
-          v-model="remoteUrl"
-          placeholder="请输入GitHub/GitLab等仓库链接"
-          class="form-control"
-        >
-        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
-      </div>
+      <input
+        type="text"
+        id="remoteUrl"
+        v-model="remoteUrl"
+        placeholder="请输入GitHub/GitLab等仓库链接"
+        class="form-control"
+      >
+      <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+    </div>
       
       <div class="button-group">
         <button class="btn confirm-btn" @click="handleConfirm" :disabled="isLoading">
@@ -105,11 +104,12 @@ const handleConfirm = async () => {
 }
 
 .modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: #333;
-}
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: #333;
+    text-align: center;
+  }
 
 .form-group {
   margin-bottom: 1.5rem;
