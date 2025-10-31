@@ -594,21 +594,48 @@ const closeDeleteWikiModal = () => {
 const confirmDeleteWiki = async () => {
   // 先关闭删除弹窗
   isDeleteWikiModalVisible.value = false;
-  
-  // 使用setTimeout确保前一个弹窗完全关闭后再显示新的弹窗
-  setTimeout(() => {
-    // 显示功能后续实现的提示
-    showConfirmModal(
-      '功能提示',
-      `删除知识库 ${selectedWikiName.value} 功能将在后续实现`,
-      async () => {
-        // 这里不做任何实际操作
-      },
-      '', // 不显示确认按钮
-      ''  // 不显示取消按钮
-    );
-  }, 100);
+
+  try {
+    // 调用删除知识库的API
+    await invoke('delete_wiki', { wikiName: selectedWikiName.value });
+
+    // 立即清空工作区文件结构，避免显示不存在的内容
+    workspaceItems.value = [];
+
+    // 刷新知识库列表
+    await refreshWikis();
+    
+    // 使用setTimeout确保前一个弹窗完全关闭后再显示新的弹窗
+    setTimeout(() => {
+      // 显示删除成功提示
+      showConfirmModal(
+        '删除成功',
+        `知识库 ${selectedWikiName.value} 已成功删除`,
+        async () => {
+
+          // 重置选中状态并导航到主页
+          selectedWikiName.value = null;
+          expandedWikiName.value = null;
+          navigateTo('/');
+        },
+        '', // 不显示确认按钮
+        ''  // 不显示取消按钮
+      );
+    }, 100);
+  } catch (error) {
+    console.error('删除知识库失败:', error);
+    setTimeout(() => {
+      showConfirmModal(
+        '删除失败',
+        `删除知识库 ${selectedWikiName.value} 时发生错误: ${error instanceof Error ? error.message : String(error)}`,
+        async () => {},
+        '', // 不显示确认按钮
+        ''  // 不显示取消按钮
+      );
+    }, 100);
+  }
 };
+
 
 const setupRemoteRepo = (wikiName: string) => {
   // 保存当前选中的知识库名称
