@@ -231,7 +231,7 @@
 <script setup lang="ts">
 import { ref, onMounted, Ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from '@tauri-apps/api/core';
 import FileTreeNode from './FileTreeNode.vue';
 import CreateWikiModal from './CreateWikiModal.vue';
 import ConfirmModal from './ConfirmModal.vue';
@@ -636,10 +636,10 @@ const confirmDeleteWiki = async () => {
   try {
     // 调用删除知识库的API
     await invoke('delete_wiki', { wikiName: selectedWikiName.value });
-
+    
     // 立即清空工作区文件结构，避免显示不存在的内容
     workspaceItems.value = [];
-
+    
     // 刷新知识库列表
     await refreshWikis();
     
@@ -650,7 +650,6 @@ const confirmDeleteWiki = async () => {
         '删除成功',
         `知识库 ${selectedWikiName.value} 已成功删除`,
         async () => {
-
           // 重置选中状态并导航到主页
           selectedWikiName.value = null;
           expandedWikiName.value = null;
@@ -673,7 +672,6 @@ const confirmDeleteWiki = async () => {
     }, 100);
   }
 };
-
 
 const setupRemoteRepo = (wikiName: string) => {
   // 保存当前选中的知识库名称
@@ -728,9 +726,30 @@ const toggleFolder = (node: FileNode) => {
 };
 
 // 处理文件点击事件
-const handleFileClick = (node: FileNode) => {
-  if (!node.is_directory) {
-    alert(`文件编辑功能将在后续实现`);
+const handleFileClick = async (node: FileNode) => {
+  if (!node.is_directory && selectedWikiName.value) {
+    try {
+      // 获取知识库根路径
+      const wikis = await invoke<Wiki[]>('get_wiki_list');
+      const wiki = wikis.find(w => w.name === selectedWikiName.value);
+      
+      if (wiki) {
+        // 计算文件相对于知识库根目录的路径
+        const rootPath = wiki.path;
+        let relativePath = node.path.replace(rootPath, '');
+        
+        // 确保路径格式正确（移除开头的斜杠）
+        if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
+          relativePath = relativePath.substring(1);
+        }
+        
+        // 导航到编辑器页面
+        router.push(`/workspace/${selectedWikiName.value}/edit/${relativePath}`);
+      }
+    } catch (error) {
+      console.error('获取知识库信息失败:', error);
+      alert(`无法打开文件: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 };
 

@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
 import WorkspaceView from '../views/WorkspaceView.vue';
+import EditorView from '../views/EditorView.vue';
 import NotFoundView from '../views/NotFoundView.vue';
 
 const routes = [
@@ -13,6 +14,12 @@ const routes = [
     path: '/workspace/:wikiName',
     name: 'workspace',
     component: WorkspaceView,
+    props: true
+  },
+  {
+    path: '/workspace/:wikiName/edit/:filePath(.*)',
+    name: 'editor',
+    component: EditorView,
     props: true
   },
   {
