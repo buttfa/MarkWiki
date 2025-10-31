@@ -14,3 +14,4 @@
    3.476818400s  INFO prepare_target{force=false package_id=markwiki v0.1.0 (E:\班级项目\MarkWiki\src-tauri) target="markwiki"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "markwiki_lib" })
     Checking markwiki v0.1.0 (E:\班级项目\MarkWiki\src-tauri)
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 5.22s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.22s
