@@ -27,7 +27,9 @@ pub fn run() {
             wiki::command::get_wiki_file_structure,
             wiki::command::create_local_wiki,
             wiki::command::create_remote_wiki,
-            wiki::command::delete_wiki
+            wiki::command::delete_wiki,
+            wiki::command::create_file,
+            wiki::command::create_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

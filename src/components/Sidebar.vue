@@ -316,9 +316,13 @@ const handleConfirmModalConfirm = async () => {
     isConfirmModalLoading.value = true;
     try {
       await confirmModalCallback();
+      // 执行完回调后关闭弹窗
+      isConfirmModalVisible.value = false;
+      confirmModalCallback = null;
     } catch (error) {
       console.error('Confirm modal callback error:', error);
       isConfirmModalVisible.value = false;
+      confirmModalCallback = null;
     } finally {
       isConfirmModalLoading.value = false;
     }
@@ -372,7 +376,7 @@ const refreshWikis = async () => {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       workspaceItems.value = fileStructure.children || [];
-
+  
       // 重置文件夹展开状态
       const newExpandedStates: Record<string, boolean> = {};
       const initExpandedStates = (nodes: FileNode[]) => {
@@ -390,6 +394,9 @@ const refreshWikis = async () => {
     } catch (err) {
       console.error('Failed to refresh workspace:', err);
       workspaceError.value = err instanceof Error ? err.message : '获取文件结构失败';
+      // 清空工作区文件结构，避免显示不存在的内容
+      workspaceItems.value = [];
+      folderExpandedStates.value = {};
       // 添加延迟让加载状态显示足够长时间
       await new Promise(resolve => setTimeout(resolve, 100));
     } finally {
@@ -567,19 +574,50 @@ const closeSetupRemoteRepoModal = () => {
   isSetupRemoteRepoModalVisible.value = false;
 };
 
-const onCreateItemSuccess = async (_type: 'file' | 'folder', _name: string, _parentPath?: string) => {
+const onCreateItemSuccess = async (type: 'file' | 'folder', name: string, parentPath: string = '') => {
   closeCreateItemModal();
   
-  // 显示功能后续实现的提示
-  showConfirmModal(
-    '功能提示',
-    `创建文件/文件夹功能将在后续实现`,
-    async () => {
-      // 这里不做任何实际操作
-    },
-    '', // 不显示确认按钮
-    ''  // 不显示取消按钮
-  );
+  try {
+    // 调用后端API创建文件或文件夹
+    if (type === 'file') {
+      await invoke('create_file', {
+        wikiName: selectedWikiName.value,
+        fileName: name,
+        parentPath: parentPath
+      });
+    } else {
+      await invoke('create_folder', {
+        wikiName: selectedWikiName.value,
+        folderName: name,
+        parentPath: parentPath
+      });
+    }
+    
+    // 刷新文件树结构
+    await refreshWorkspace();
+    
+    // 显示成功提示
+    showConfirmModal(
+      '成功',
+      type === 'file' ? `文件 ${name} 创建成功` : `文件夹 ${name} 创建成功`,
+      async () => {
+        // 不做任何操作
+      },
+      '确定',
+      ''
+    );
+  } catch (error) {
+    // 显示错误提示
+    showConfirmModal(
+      '错误',
+      `创建失败: ${error instanceof Error ? error.message : String(error)}`,
+      async () => {
+        // 不做任何操作
+      },
+      '确定',
+      ''
+    );
+  }
 };
 
 const deleteWiki = (wikiName: string) => {
