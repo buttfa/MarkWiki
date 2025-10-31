@@ -153,3 +153,101 @@ pub async fn delete_wiki(wiki_name: &str) -> Result<(), String> {
 
     Ok(())
 }
+/// 创建文件
+///
+/// 该函数会在指定知识库的指定路径下创建一个新文件。
+///
+/// # 参数
+/// * `wiki_name` - 知识库名称
+/// * `file_name` - 文件名
+/// * `parent_path` - 父目录路径，相对于知识库根目录
+///
+/// # 返回值
+/// * `Result<(), String>` - 成功时返回 `Ok(())`
+/// * 失败时返回 `Err(String)`，包含具体错误信息
+#[tauri::command]
+pub async fn create_file(wiki_name: String, file_name: String, parent_path: String) -> Result<(), String> {
+    // 验证文件名
+    if !file_name.ends_with(".md") {
+        return Err("文件名必须以.md结尾".to_string());
+    }
+
+    // 获取知识库路径
+    let wiki = Wiki::from_name(&wiki_name)
+        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+    
+    // 构建文件的完整路径
+    let mut full_path = std::path::PathBuf::from(&wiki.path);
+    
+    // 添加父目录路径
+    if !parent_path.is_empty() && parent_path != "/" {
+        full_path = full_path.join(&parent_path);
+    }
+    
+    // 添加文件名
+    full_path = full_path.join(&file_name);
+    
+    // 检查文件是否已存在
+    if full_path.exists() {
+        return Err(format!("文件已存在: {}", file_name));
+    }
+    
+    // 确保父目录存在
+    if let Some(parent_dir) = full_path.parent() {
+        std::fs::create_dir_all(parent_dir)
+            .map_err(|e| format!("创建父目录失败: {}", e))?;
+    }
+    
+    // 创建空文件
+    std::fs::File::create(full_path)
+        .map_err(|e| format!("创建文件失败: {}", e))?;
+    
+    Ok(())
+}
+
+/// 创建文件夹
+///
+/// 该函数会在指定知识库的指定路径下创建一个新文件夹。
+///
+/// # 参数
+/// * `wiki_name` - 知识库名称
+/// * `folder_name` - 文件夹名
+/// * `parent_path` - 父目录路径，相对于知识库根目录
+///
+/// # 返回值
+/// * `Result<(), String>` - 成功时返回 `Ok(())`
+/// * 失败时返回 `Err(String)`，包含具体错误信息
+#[tauri::command]
+pub async fn create_folder(wiki_name: String, folder_name: String, parent_path: String) -> Result<(), String> {
+    // 获取知识库路径
+    let wiki = Wiki::from_name(&wiki_name)
+        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+    
+    // 构建文件夹的完整路径
+    let mut full_path = std::path::PathBuf::from(&wiki.path);
+    
+    // 添加父目录路径
+    if !parent_path.is_empty() && parent_path != "/" {
+        full_path = full_path.join(&parent_path);
+    }
+    
+    // 添加文件夹名
+    full_path = full_path.join(&folder_name);
+    
+    // 检查文件夹是否已存在
+    if full_path.exists() {
+        return Err(format!("文件夹已存在: {}", folder_name));
+    }
+    
+    // 确保父目录存在
+    if let Some(parent_dir) = full_path.parent() {
+        std::fs::create_dir_all(parent_dir)
+            .map_err(|e| format!("创建父目录失败: {}", e))?;
+    }
+    
+    // 创建文件夹
+    std::fs::create_dir(full_path)
+        .map_err(|e| format!("创建文件夹失败: {}", e))?;
+    
+    Ok(())
+}
