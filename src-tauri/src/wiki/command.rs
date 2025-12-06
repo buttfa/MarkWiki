@@ -396,3 +396,140 @@ pub async fn save_file(wiki_name: String, file_path: String, content: String) ->
             return error_msg;
         })
 }
+// 添加这行导入（放在文件顶部，其他导入之后）
+use std::path::PathBuf;
+use crate::git::Repository;
+
+/// Git 同步操作
+/// 
+/// 执行完整的 Git 同步流程：获取远程更新 → 合并 → 推送
+/// 只支持无冲突情况下的同步
+///
+/// # 参数
+/// * `wiki_name` - 知识库名称
+///
+/// # 返回值
+/// * `Result<(), String>` - 成功时返回 `Ok(())`
+/// * 失败时返回 `Err(String)`，包含具体错误信息
+#[tauri::command]
+pub async fn git_sync(wiki_name: String) -> Result<(), String> {
+    // 获取知识库路径
+    let wiki = crate::wiki::Wiki::from_name(&wiki_name)
+        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+    
+    // 打开 Git 仓库
+    let repo = Repository::open(&PathBuf::from(&wiki.path))
+        .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
+    
+    // 执行同步
+    repo.sync()
+        .map_err(|e| format!("同步失败: {}", e))
+}
+
+/// Git 提交并同步
+/// 
+/// 先提交本地修改，然后执行同步
+///
+/// # 参数
+/// * `wiki_name` - 知识库名称
+/// * `message` - 提交信息
+///
+/// # 返回值
+/// * `Result<(), String>` - 成功时返回 `Ok(())`
+/// * 失败时返回 `Err(String)`，包含具体错误信息
+#[tauri::command]
+pub async fn git_commit_and_sync(wiki_name: String, message: String) -> Result<(), String> {
+    // 获取知识库路径
+    let wiki = crate::wiki::Wiki::from_name(&wiki_name)
+        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+    
+    // 打开 Git 仓库
+    let mut repo = Repository::open(&PathBuf::from(&wiki.path))
+        .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
+    
+    // 检查是否有未提交的修改
+    if !repo.has_uncommitted_changes()
+        .map_err(|e| format!("检查修改状态失败: {}", e))? {
+        return Err("没有需要提交的修改".to_string());
+    }
+    
+    // 添加所有修改到暂存区
+    repo.add_all()
+        .map_err(|e| format!("添加文件到暂存区失败: {}", e))?;
+    
+    // 提交
+    repo.commit(&message)
+        .map_err(|e| format!("提交失败: {}", e))?;
+    
+    // 执行同步
+    repo.sync()
+        .map_err(|e| format!("同步失败: {}", e))
+}
+
+/// 检查是否有未提交的修改
+///
+/// # 参数
+/// * `wiki_name` - 知识库名称
+///
+/// # 返回值
+/// * `Result<bool, String>` - `true` 表示有未提交修改，`false` 表示没有
+/// * 失败时返回具体错误信息
+#[tauri::command]
+pub async fn git_check_status(wiki_name: String) -> Result<bool, String> {
+    // 获取知识库路径
+    let wiki = crate::wiki::Wiki::from_name(&wiki_name)
+        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+    
+    // 打开 Git 仓库
+    let repo = Repository::open(&PathBuf::from(&wiki.path))
+        .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
+    
+    repo.has_uncommitted_changes()
+        .map_err(|e| format!("检查状态失败: {}", e))
+}
+
+/// 设置 Git 用户配置
+///
+/// # 参数
+/// * `wiki_name` - 知识库名称
+/// * `name` - 用户名
+/// * `email` - 邮箱
+///
+/// # 返回值
+/// * `Result<(), String>` - 成功时返回 `Ok(())`
+/// * 失败时返回具体错误信息
+#[tauri::command]
+pub async fn git_set_user_config(wiki_name: String, name: String, email: String) -> Result<(), String> {
+    // 获取知识库路径
+    let wiki = crate::wiki::Wiki::from_name(&wiki_name)
+        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+    
+    // 打开 Git 仓库
+    let repo = Repository::open(&PathBuf::from(&wiki.path))
+        .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
+    
+    repo.set_user_config(&name, &email)
+        .map_err(|e| format!("设置用户配置失败: {}", e))
+}
+
+/// 获取 Git 用户配置
+///
+/// # 参数
+/// * `wiki_name` - 知识库名称
+///
+/// # 返回值
+/// * `Result<(String, String), String>` - 成功时返回 `(用户名, 邮箱)`
+/// * 失败时返回具体错误信息
+#[tauri::command]
+pub async fn git_get_user_config(wiki_name: String) -> Result<(String, String), String> {
+    // 获取知识库路径
+    let wiki = crate::wiki::Wiki::from_name(&wiki_name)
+        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+    
+    // 打开 Git 仓库
+    let repo = Repository::open(&PathBuf::from(&wiki.path))
+        .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
+    
+    repo.get_user_config()
+        .map_err(|e| format!("获取用户配置失败: {}", e))
+}

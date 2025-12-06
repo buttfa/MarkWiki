@@ -124,7 +124,7 @@
                 <span>{{ wiki.name }}</span>
               </div>
               <div v-if="expandedWikiName === wiki.name" class="wiki-subitems">
-                <div class="nav-item" @click="syncWiki(wiki.name)" v-if="wiki.has_remote_repo">
+                <div class="nav-item" @click="syncWiki(wiki.name)">
                   <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="23 4 23 10 17 10"></polyline>
                     <polyline points="1 20 1 14 7 14"></polyline>
@@ -538,9 +538,50 @@ const onCreateWikiSuccess = async () => {
   await refreshWikis();
 };
 
-const syncWiki = (wikiName: string) => {
+const syncWiki = async (wikiName: string) => {
   selectedWikiName.value = wikiName;
-  isSyncWikiModalVisible.value = true;
+  
+  try {
+    // 显示加载中提示
+    showConfirmModal(
+      '同步中',
+      `正在同步知识库 "${wikiName}"...`,
+      async () => {}, // 空回调
+      '', // 不显示确认按钮
+      ''  // 不显示取消按钮
+    );
+    isConfirmModalLoading.value = true;
+    
+    // 调用你的 Git 同步命令
+    await invoke('git_sync', { wikiName });
+    
+    // 关闭加载提示
+    isConfirmModalVisible.value = false;
+    
+    // 显示成功提示
+    showConfirmModal(
+      '同步成功',
+      `知识库 "${wikiName}" 同步完成！`,
+      async () => {
+        // 同步成功后刷新文件结构
+        await refreshWorkspace();
+      },
+      '确定',
+      ''
+    );
+  } catch (error) {
+    // 关闭加载提示
+    isConfirmModalVisible.value = false;
+    
+    // 显示失败提示
+    showConfirmModal(
+      '同步失败',
+      `同步失败: ${error}`,
+      async () => {},
+      '确定',
+      ''
+    );
+  }
 };
 
 const closeSyncWikiModal = () => {

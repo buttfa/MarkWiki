@@ -1,5 +1,9 @@
-mod git;
-mod wiki;
+// src/lib.rs
+pub mod git;
+pub mod wiki;
+
+// 导入命令
+use wiki::command::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -9,12 +13,10 @@ pub fn run() {
 
     let builder = tauri::Builder::default();
 
-    #[cfg(debug_assertions)] // 仅在调试(debug)版本中包含此代码
+    #[cfg(debug_assertions)]
     let builder = builder.setup(|app| {
-        {
-            // 自动打开 Devtools
-            use tauri::Manager;
-            let window = app.get_webview_window("main").unwrap();
+        use tauri::Manager;
+        if let Some(window) = app.get_webview_window("main") {
             window.open_devtools();
         }
         Ok(())
@@ -23,15 +25,22 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            wiki::command::get_wiki_list,
-            wiki::command::get_wiki_file_structure,
-            wiki::command::create_local_wiki,
-            wiki::command::create_remote_wiki,
-            wiki::command::delete_wiki,
-            wiki::command::create_file,
-            wiki::command::create_folder,
-            wiki::command::read_file,
-            wiki::command::save_file
+            // Wiki 命令
+            get_wiki_file_structure,
+            get_wiki_list,
+            create_local_wiki,
+            create_remote_wiki,
+            delete_wiki,
+            create_file,
+            create_folder,
+            read_file,
+            save_file,
+            // Git 命令（现在也在 wiki::command 中）
+            git_sync,
+            git_commit_and_sync,
+            git_check_status,
+            git_set_user_config,
+            git_get_user_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
