@@ -40,7 +40,8 @@ pub async fn get_wiki_list() -> Result<Vec<Wiki>, String> {
 
     // 遍历 Wikis 目录下的所有文件夹
     for entry in std::fs::read_dir(
-        &Wiki::get_wiki_storage_dir().map_err(|e| format!("无法打开所有知识库的统一存储目录: {}", e))?,
+        &Wiki::get_wiki_storage_dir()
+            .map_err(|e| format!("无法打开所有知识库的统一存储目录: {}", e))?,
     )
     .map_err(|e| format!("读取知识库目录失败: {}", e))?
     {
@@ -85,8 +86,7 @@ pub async fn create_local_wiki(wiki_name: &str) -> Result<Wiki, String> {
     }
 
     // 创建知识库并返回新创建的Wiki实例
-    Wiki::create_local_wiki(wiki_name)
-        .map_err(|e| format!("创建本地知识库失败: {}", e))
+    Wiki::create_local_wiki(wiki_name).map_err(|e| format!("创建本地知识库失败: {}", e))
 }
 
 /// 从远程URL创建知识库
@@ -148,8 +148,7 @@ pub async fn delete_wiki(wiki_name: &str) -> Result<(), String> {
     }
 
     // 删除知识库目录
-    std::fs::remove_dir_all(&target_wiki_dir)
-        .map_err(|e| format!("删除知识库失败: {}", e))?;
+    std::fs::remove_dir_all(&target_wiki_dir).map_err(|e| format!("删除知识库失败: {}", e))?;
 
     Ok(())
 }
@@ -167,42 +166,44 @@ pub async fn delete_wiki(wiki_name: &str) -> Result<(), String> {
 /// * `Result<(), String>` - 成功时返回 `Ok(())`
 /// * 失败时返回 `Err(String)`，包含具体错误信息
 #[tauri::command]
-pub async fn create_file(wiki_name: String, file_name: String, parent_path: String) -> Result<(), String> {
+pub async fn create_file(
+    wiki_name: String,
+    file_name: String,
+    parent_path: String,
+) -> Result<(), String> {
     // 验证文件名
     if !file_name.ends_with(".md") {
         return Err("文件名必须以.md结尾".to_string());
     }
 
     // 获取知识库路径
-    let wiki = Wiki::from_name(&wiki_name)
-        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
-    
+    let wiki =
+        Wiki::from_name(&wiki_name).map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+
     // 构建文件的完整路径
     let mut full_path = std::path::PathBuf::from(&wiki.path);
-    
+
     // 添加父目录路径
     if !parent_path.is_empty() && parent_path != "/" {
         full_path = full_path.join(&parent_path);
     }
-    
+
     // 添加文件名
     full_path = full_path.join(&file_name);
-    
+
     // 检查文件是否已存在
     if full_path.exists() {
         return Err(format!("文件已存在: {}", file_name));
     }
-    
+
     // 确保父目录存在
     if let Some(parent_dir) = full_path.parent() {
-        std::fs::create_dir_all(parent_dir)
-            .map_err(|e| format!("创建父目录失败: {}", e))?;
+        std::fs::create_dir_all(parent_dir).map_err(|e| format!("创建父目录失败: {}", e))?;
     }
-    
+
     // 创建空文件
-    std::fs::File::create(full_path)
-        .map_err(|e| format!("创建文件失败: {}", e))?;
-    
+    std::fs::File::create(full_path).map_err(|e| format!("创建文件失败: {}", e))?;
+
     Ok(())
 }
 
@@ -219,37 +220,39 @@ pub async fn create_file(wiki_name: String, file_name: String, parent_path: Stri
 /// * `Result<(), String>` - 成功时返回 `Ok(())`
 /// * 失败时返回 `Err(String)`，包含具体错误信息
 #[tauri::command]
-pub async fn create_folder(wiki_name: String, folder_name: String, parent_path: String) -> Result<(), String> {
+pub async fn create_folder(
+    wiki_name: String,
+    folder_name: String,
+    parent_path: String,
+) -> Result<(), String> {
     // 获取知识库路径
-    let wiki = Wiki::from_name(&wiki_name)
-        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
-    
+    let wiki =
+        Wiki::from_name(&wiki_name).map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+
     // 构建文件夹的完整路径
     let mut full_path = std::path::PathBuf::from(&wiki.path);
-    
+
     // 添加父目录路径
     if !parent_path.is_empty() && parent_path != "/" {
         full_path = full_path.join(&parent_path);
     }
-    
+
     // 添加文件夹名
     full_path = full_path.join(&folder_name);
-    
+
     // 检查文件夹是否已存在
     if full_path.exists() {
         return Err(format!("文件夹已存在: {}", folder_name));
     }
-    
+
     // 确保父目录存在
     if let Some(parent_dir) = full_path.parent() {
-        std::fs::create_dir_all(parent_dir)
-            .map_err(|e| format!("创建父目录失败: {}", e))?;
+        std::fs::create_dir_all(parent_dir).map_err(|e| format!("创建父目录失败: {}", e))?;
     }
-    
+
     // 创建文件夹
-    std::fs::create_dir(full_path)
-        .map_err(|e| format!("创建文件夹失败: {}", e))?;
-    
+    std::fs::create_dir(full_path).map_err(|e| format!("创建文件夹失败: {}", e))?;
+
     Ok(())
 }
 /// 读取文件内容
@@ -266,21 +269,23 @@ pub async fn create_folder(wiki_name: String, folder_name: String, parent_path: 
 #[tauri::command]
 pub async fn read_file(wiki_name: String, file_path: String) -> Result<String, String> {
     // 添加详细调试信息
-    eprintln!("开始读取文件 - wiki_name: {}, file_path: {}", wiki_name, file_path);
-    
+    eprintln!(
+        "开始读取文件 - wiki_name: {}, file_path: {}",
+        wiki_name, file_path
+    );
+
     // 获取知识库路径
-    let wiki = Wiki::from_name(&wiki_name)
-        .map_err(|e| {
-            let error_msg = format!("无法打开知识库 {}: {}", wiki_name, e);
-            eprintln!("{}", error_msg);
-            return error_msg;
-        })?;
-    
+    let wiki = Wiki::from_name(&wiki_name).map_err(|e| {
+        let error_msg = format!("无法打开知识库 {}: {}", wiki_name, e);
+        eprintln!("{}", error_msg);
+        return error_msg;
+    })?;
+
     eprintln!("知识库路径: {}", wiki.path);
-    
+
     // 构建文件的完整路径
     let mut full_path = std::path::PathBuf::from(&wiki.path);
-    
+
     // 添加文件路径，使用更健壮的路径处理
     if !file_path.is_empty() && file_path != "/" {
         // 标准化路径分隔符
@@ -296,21 +301,21 @@ pub async fn read_file(wiki_name: String, file_path: String) -> Result<String, S
 
     // 打印完整路径（调试用，确认路径是否正确）
     eprintln!("读取文件完整路径: {:?}", full_path);
-    
+
     // 检查文件是否存在
     if !full_path.exists() {
         let error_msg = format!("文件不存在: {}", full_path.display());
         eprintln!("{}", error_msg);
         return Err(error_msg);
     }
-    
+
     // 检查是否为文件
     if !full_path.is_file() {
         let error_msg = format!("指定的路径不是一个文件: {}", full_path.display());
         eprintln!("{}", error_msg);
         return Err(error_msg);
     }
-    
+
     // 读取文件内容
     std::fs::read_to_string(&full_path)
         .map_err(|e| {
@@ -345,21 +350,28 @@ pub async fn read_file(wiki_name: String, file_path: String) -> Result<String, S
 /// * 失败时返回 `Err(String)`，包含具体错误信息
 
 #[tauri::command]
-pub async fn save_file(wiki_name: String, file_path: String, content: String) -> Result<(), String> {
+pub async fn save_file(
+    wiki_name: String,
+    file_path: String,
+    content: String,
+) -> Result<(), String> {
     // 添加详细调试信息
-    eprintln!("开始保存文件 - wiki_name: {}, file_path: {}, 内容长度: {}", 
-              wiki_name, file_path, content.len());
-    
+    eprintln!(
+        "开始保存文件 - wiki_name: {}, file_path: {}, 内容长度: {}",
+        wiki_name,
+        file_path,
+        content.len()
+    );
+
     // 获取知识库路径
-    let wiki = Wiki::from_name(&wiki_name)
-        .map_err(|e| {
-            let error_msg = format!("无法打开知识库 {}: {}", wiki_name, e);
-            eprintln!("{}", error_msg);
-            return error_msg;
-        })?;
-    
+    let wiki = Wiki::from_name(&wiki_name).map_err(|e| {
+        let error_msg = format!("无法打开知识库 {}: {}", wiki_name, e);
+        eprintln!("{}", error_msg);
+        return error_msg;
+    })?;
+
     eprintln!("知识库路径: {}", wiki.path);
-    
+
     // 构建文件的完整路径（使用更健壮的路径处理）
     let mut full_path = std::path::PathBuf::from(&wiki.path);
     if !file_path.is_empty() && file_path != "/" {
@@ -376,32 +388,30 @@ pub async fn save_file(wiki_name: String, file_path: String, content: String) ->
 
     // 打印完整路径（调试用）
     eprintln!("保存文件完整路径: {:?}", full_path);
-    
+
     // 确保父目录存在
     if let Some(parent_dir) = full_path.parent() {
         eprintln!("确保父目录存在: {:?}", parent_dir);
-        std::fs::create_dir_all(parent_dir)
-            .map_err(|e| {
-                let error_msg = format!("创建父目录失败 {}: {}", parent_dir.display(), e);
-                eprintln!("{}", error_msg);
-                return error_msg;
-            })?;
-    }
-    
-    // 写入文件内容
-    std::fs::write(&full_path, content)
-        .map_err(|e| {
-            let error_msg = format!("保存文件失败 {}: {}", full_path.display(), e);
+        std::fs::create_dir_all(parent_dir).map_err(|e| {
+            let error_msg = format!("创建父目录失败 {}: {}", parent_dir.display(), e);
             eprintln!("{}", error_msg);
             return error_msg;
-        })
+        })?;
+    }
+
+    // 写入文件内容
+    std::fs::write(&full_path, content).map_err(|e| {
+        let error_msg = format!("保存文件失败 {}: {}", full_path.display(), e);
+        eprintln!("{}", error_msg);
+        return error_msg;
+    })
 }
 // 添加这行导入（放在文件顶部，其他导入之后）
-use std::path::PathBuf;
 use crate::git::Repository;
+use std::path::PathBuf;
 
 /// Git 同步操作
-/// 
+///
 /// 执行完整的 Git 同步流程：获取远程更新 → 合并 → 推送
 /// 只支持无冲突情况下的同步
 ///
@@ -416,18 +426,17 @@ pub async fn git_sync(wiki_name: String) -> Result<(), String> {
     // 获取知识库路径
     let wiki = crate::wiki::Wiki::from_name(&wiki_name)
         .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
-    
+
     // 打开 Git 仓库
     let repo = Repository::open(&PathBuf::from(&wiki.path))
         .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
-    
+
     // 执行同步
-    repo.sync()
-        .map_err(|e| format!("同步失败: {}", e))
+    repo.sync().map_err(|e| format!("同步失败: {}", e))
 }
 
 /// Git 提交并同步
-/// 
+///
 /// 先提交本地修改，然后执行同步
 ///
 /// # 参数
@@ -442,28 +451,29 @@ pub async fn git_commit_and_sync(wiki_name: String, message: String) -> Result<(
     // 获取知识库路径
     let wiki = crate::wiki::Wiki::from_name(&wiki_name)
         .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
-    
+
     // 打开 Git 仓库
     let mut repo = Repository::open(&PathBuf::from(&wiki.path))
         .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
-    
+
     // 检查是否有未提交的修改
-    if !repo.has_uncommitted_changes()
-        .map_err(|e| format!("检查修改状态失败: {}", e))? {
+    if !repo
+        .has_uncommitted_changes()
+        .map_err(|e| format!("检查修改状态失败: {}", e))?
+    {
         return Err("没有需要提交的修改".to_string());
     }
-    
+
     // 添加所有修改到暂存区
     repo.add_all()
         .map_err(|e| format!("添加文件到暂存区失败: {}", e))?;
-    
+
     // 提交
     repo.commit(&message)
         .map_err(|e| format!("提交失败: {}", e))?;
-    
+
     // 执行同步
-    repo.sync()
-        .map_err(|e| format!("同步失败: {}", e))
+    repo.sync().map_err(|e| format!("同步失败: {}", e))
 }
 
 /// 检查是否有未提交的修改
@@ -479,11 +489,11 @@ pub async fn git_check_status(wiki_name: String) -> Result<bool, String> {
     // 获取知识库路径
     let wiki = crate::wiki::Wiki::from_name(&wiki_name)
         .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
-    
+
     // 打开 Git 仓库
     let repo = Repository::open(&PathBuf::from(&wiki.path))
         .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
-    
+
     repo.has_uncommitted_changes()
         .map_err(|e| format!("检查状态失败: {}", e))
 }
@@ -499,15 +509,19 @@ pub async fn git_check_status(wiki_name: String) -> Result<bool, String> {
 /// * `Result<(), String>` - 成功时返回 `Ok(())`
 /// * 失败时返回具体错误信息
 #[tauri::command]
-pub async fn git_set_user_config(wiki_name: String, name: String, email: String) -> Result<(), String> {
+pub async fn git_set_user_config(
+    wiki_name: String,
+    name: String,
+    email: String,
+) -> Result<(), String> {
     // 获取知识库路径
     let wiki = crate::wiki::Wiki::from_name(&wiki_name)
         .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
-    
+
     // 打开 Git 仓库
     let repo = Repository::open(&PathBuf::from(&wiki.path))
         .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
-    
+
     repo.set_user_config(&name, &email)
         .map_err(|e| format!("设置用户配置失败: {}", e))
 }
@@ -525,11 +539,11 @@ pub async fn git_get_user_config(wiki_name: String) -> Result<(String, String), 
     // 获取知识库路径
     let wiki = crate::wiki::Wiki::from_name(&wiki_name)
         .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
-    
+
     // 打开 Git 仓库
     let repo = Repository::open(&PathBuf::from(&wiki.path))
         .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
-    
+
     repo.get_user_config()
         .map_err(|e| format!("获取用户配置失败: {}", e))
 }

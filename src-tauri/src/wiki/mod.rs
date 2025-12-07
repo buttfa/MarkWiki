@@ -4,11 +4,11 @@
 //! 此模块提供了知识库的核心功能，包括知识库的创建、查询和管理。
 //! 它定义了知识库的数据结构，并实现了获取知识库列表、文件结构等功能。
 
+use crate::git;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
-use crate::git;
 
 /// 知识库操作可能出现的错误类型
 #[derive(Error, Debug)]
@@ -47,8 +47,6 @@ pub enum Error {
     BuildFileTree(String),
 }
 
-pub mod command;
-
 /// 知识库项结构体，用于表示知识库的基本信息
 ///
 /// 该结构体主要用于在用户界面中显示知识库列表，包含知识库的名称和是否连接到远程仓库的状态。
@@ -61,7 +59,7 @@ pub mod command;
 pub struct Wiki {
     name: String,
     has_remote_repo: bool,
-    path: String,
+    pub path: String,
 }
 
 impl Wiki {
@@ -77,7 +75,7 @@ impl Wiki {
     /// # 返回值
     /// * `Result<Self, ()>` - 成功时返回 `Ok(Wiki)`，包含知识库实例
     /// * 失败时返回 `Err(())`，表示无法获取知识库实例（如路径不存在或不是Git仓库）
-    fn from_name(name: &str) -> Result<Self, Error> {
+    pub fn from_name(name: &str) -> Result<Self, Error> {
         // 构建知识库的存储路径
         let path = Self::get_wiki_storage_dir()
             .map_err(|_| Error::StorageDir)?
@@ -110,7 +108,7 @@ impl Wiki {
     ///
     /// # 返回值
     /// * `bool` - 如果知识库存在返回`true`，否则返回`false`
-    fn exists(name: &str) -> bool {
+    pub fn exists(name: &str) -> bool {
         Self::from_name(name).is_ok()
     }
 
@@ -125,7 +123,7 @@ impl Wiki {
     /// # 返回值
     /// * `Result<Self, Error>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库实例
     /// * 失败时返回 `Err(Error)`，表示无法创建知识库（如路径已存在或创建目录失败）
-    fn create_local_wiki(name: &str) -> Result<Self, Error> {
+    pub fn create_local_wiki(name: &str) -> Result<Self, Error> {
         // 构造知识库的存储路径
         let path = Self::get_wiki_storage_dir()
             .map_err(|_| Error::StorageDir)?
@@ -161,7 +159,7 @@ impl Wiki {
     /// # 返回值
     /// * `Result<Self, Error>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库实例
     /// * 失败时返回 `Err(Error)`，表示无法创建知识库（如路径已存在或克隆失败）
-    fn create_remote_wiki(name: &str, url: &str) -> Result<Self, Error> {
+    pub fn create_remote_wiki(name: &str, url: &str) -> Result<Self, Error> {
         // 构造知识库的存储路径
         let path = Self::get_wiki_storage_dir()
             .map_err(|_| Error::StorageDir)?
@@ -193,7 +191,7 @@ impl Wiki {
     /// # 平台差异
     /// * Android平台：使用临时目录下的markwiki/wiki目录
     /// * Linux/Windows平台：使用可执行文件所在目录下的wiki目录
-    fn get_wiki_storage_dir() -> Result<PathBuf, Error> {
+    pub fn get_wiki_storage_dir() -> Result<PathBuf, Error> {
         // Android 平台
         #[cfg(target_os = "android")]
         {
@@ -262,7 +260,7 @@ pub struct FileNode {
 /// * 对于目录，会递归遍历其所有子项并构建子节点树
 /// * 子节点会按名称排序，目录排在文件前面
 /// * 对于文件，不会包含子节点信息
-fn build_file_tree(path: &Path) -> Result<FileNode, Error> {
+pub fn build_file_tree(path: &Path) -> Result<FileNode, Error> {
     // 获取文件或目录的元数据
     let metadata = fs::metadata(path)
         .map_err(|e| Error::BuildFileTree(format!("获取文件元数据失败: {:?}: {}", path, e)))?;

@@ -1,9 +1,10 @@
 // src/lib.rs
-pub mod git;
-pub mod wiki;
+mod command;
+mod git;
+mod wiki;
 
 // 导入命令
-use wiki::command::*;
+use command::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -35,7 +36,6 @@ pub fn run() {
             create_folder,
             read_file,
             save_file,
-            // Git 命令（现在也在 wiki::command 中）
             git_sync,
             git_commit_and_sync,
             git_check_status,
