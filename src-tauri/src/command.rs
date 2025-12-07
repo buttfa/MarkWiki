@@ -590,3 +590,91 @@ pub async fn git_get_user_config(wiki_name: String) -> Result<(String, String), 
     repo.get_user_config()
         .map_err(|e| format!("获取用户配置失败: {}", e))
 }
+
+/// 设置知识库远程仓库
+///
+/// 该函数会为指定的知识库设置远程仓库信息，包括URL、用户名、邮箱和密码
+///
+/// # 参数
+/// * `wiki_name` - 知识库名称
+/// * `remote_url` - 远程仓库URL
+/// * `username` - Git用户名
+/// * `email` - Git邮箱
+/// * `password` - Git密码
+///
+/// # 返回值
+/// * `Result<(), String>` - 成功时返回 `Ok(())`
+/// * 失败时返回具体错误信息
+#[tauri::command]
+pub async fn setup_remote_repo(
+    wiki_name: String,
+    remote_url: String,
+    username: String,
+    email: String,
+    password: String,
+) -> Result<(), String> {
+    // 获取知识库路径
+    let wiki = crate::wiki::Wiki::from_name(&wiki_name)
+        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+
+    // 打开 Git 仓库
+    let repo = Repository::open(&PathBuf::from(&wiki.path))
+        .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
+
+    // 设置用户配置
+    repo.set_user_config(&username, &email)
+        .map_err(|e| format!("设置用户配置失败: {}", e))?;
+
+    // 设置远程仓库
+    repo.set_remote("origin", &remote_url)
+        .map_err(|e| format!("设置远程仓库失败: {}", e))?;
+
+    // 保存用户凭据到应用配置
+    let config = crate::config::AppConfig::new(
+        &username,
+        &email,
+        if password.is_empty() {
+            None
+        } else {
+            Some(&password)
+        },
+    );
+    config.save().map_err(|e| format!("保存配置失败: {}", e))?;
+
+    Ok(())
+}
+
+/// 获取知识库远程仓库配置信息
+///
+/// 该函数会获取指定知识库的远程仓库URL和用户配置信息
+///
+/// # 参数
+/// * `wiki_name` - 知识库名称
+///
+/// # 返回值
+/// * `Result<(Option<String>, String, String), String>` - 成功时返回 `(远程仓库URL(可能为None), 用户名, 邮箱)`
+/// * 失败时返回具体错误信息
+#[tauri::command]
+pub async fn get_remote_repo_config(
+    wiki_name: String,
+) -> Result<(Option<String>, String, String), String> {
+    // 获取知识库路径
+    let wiki = crate::wiki::Wiki::from_name(&wiki_name)
+        .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
+
+    // 打开 Git 仓库
+    let repo = Repository::open(&PathBuf::from(&wiki.path))
+        .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
+
+    // 获取用户配置
+    let (username, email) = repo
+        .get_user_config()
+        .map_err(|e| format!("获取用户配置失败: {}", e))?;
+
+    // 获取远程仓库URL
+    let remote_url = repo
+        .get_remote_url("origin")
+        .map_err(|e| format!("获取远程仓库URL失败: {}", e))?;
+
+    Ok((remote_url, username, email))
+}

@@ -41,7 +41,9 @@ pub fn run() {
             git_commit_and_sync,
             git_check_status,
             git_set_user_config,
-            git_get_user_config
+            git_get_user_config,
+            setup_remote_repo,
+            get_remote_repo_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

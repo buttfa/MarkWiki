@@ -164,6 +164,10 @@ impl Repository {
                 });
             }
 
+            // 在所有平台上添加证书验证处理
+            callbacks
+                .certificate_check(|_cert, _host| Ok(git2::CertificateCheckStatus::CertificateOk));
+
             // 创建远程配置
             let mut fetch_opts = git2::FetchOptions::new();
             fetch_opts.remote_callbacks(callbacks);
@@ -374,12 +378,8 @@ impl Repository {
             });
         }
 
-        #[cfg(target_os = "android")]
-        {
-            // 在Android平台上忽略证书验证错误
-            callbacks
-                .certificate_check(|_cert, _host| Ok(git2::CertificateCheckStatus::CertificateOk));
-        }
+        // 在所有平台上添加证书验证处理
+        callbacks.certificate_check(|_cert, _host| Ok(git2::CertificateCheckStatus::CertificateOk));
 
         let mut fetch_opts = git2::FetchOptions::new();
         fetch_opts.remote_callbacks(callbacks);
@@ -459,12 +459,8 @@ impl Repository {
             });
         }
 
-        #[cfg(target_os = "android")]
-        {
-            // 在Android平台上忽略证书验证错误
-            callbacks
-                .certificate_check(|_cert, _host| Ok(git2::CertificateCheckStatus::CertificateOk));
-        }
+        // 在所有平台上添加证书验证处理
+        callbacks.certificate_check(|_cert, _host| Ok(git2::CertificateCheckStatus::CertificateOk));
 
         let mut push_opts = git2::PushOptions::new();
         push_opts.remote_callbacks(callbacks);
@@ -488,6 +484,51 @@ impl Repository {
                     Ok(false)
                 } else {
                     Err(Error::Remote(e)) // 转换为 Error 类型
+                }
+            }
+        }
+    }
+
+    /// 设置远程仓库
+    ///
+    /// # 参数
+    /// * `name` - 远程仓库名称，通常为 "origin"
+    /// * `url` - 远程仓库URL
+    ///
+    /// # 返回值
+    /// * `Result<(), Error>` - 成功时返回 `Ok(())`，失败时返回具体错误信息
+    pub fn set_remote(&self, name: &str, url: &str) -> Result<(), Error> {
+        // 先检查是否已经存在同名远程仓库
+        if let Ok(_) = self.repo.find_remote(name) {
+            // 如果存在，更新URL
+            self.repo.remote_set_url(name, url).map_err(Error::Remote)?;
+        } else {
+            // 如果不存在，添加新的远程仓库
+            self.repo.remote(name, url).map_err(Error::Remote)?;
+        }
+
+        Ok(())
+    }
+
+    /// 获取远程仓库URL
+    ///
+    /// # 参数
+    /// * `name` - 远程仓库名称，通常为 "origin"
+    ///
+    /// # 返回值
+    /// * `Result<Option<String>, Error>` - 成功时返回 `Ok(Some(url))` 或 `Ok(None)`（如果远程仓库不存在）
+    /// * 失败时返回具体错误信息
+    pub fn get_remote_url(&self, name: &str) -> Result<Option<String>, Error> {
+        match self.repo.find_remote(name) {
+            Ok(remote) => match remote.url() {
+                Some(url) => Ok(Some(url.to_string())),
+                None => Ok(None),
+            },
+            Err(e) => {
+                if e.code() == git2::ErrorCode::NotFound {
+                    Ok(None)
+                } else {
+                    Err(Error::Remote(e))
                 }
             }
         }

@@ -3,25 +3,63 @@
     <div class="modal-container" @click.stop>
       <h2 class="modal-title">设置知识库远程仓库</h2>
       
-      <div class="form-group">
-      <input
-        type="text"
-        id="remoteUrl"
-        v-model="remoteUrl"
-        placeholder="请输入GitHub/GitLab等仓库链接"
-        class="form-control"
-      >
-      <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
-    </div>
+      <div v-if="isLoadingConfig" class="loading-container">
+        <div class="spinner"></div>
+        <span>加载配置中...</span>
+      </div>
+      
+      <div v-else>
+        <div class="form-group">
+        <input
+          type="text"
+          id="remoteUrl"
+          v-model="remoteUrl"
+          placeholder="请输入GitHub/GitLab等仓库链接"
+          class="form-control"
+        >
+      </div>
+      
+        <div class="form-group">
+        <input
+          type="text"
+          id="username"
+          v-model="username"
+          placeholder="请输入用户名"
+          class="form-control"
+        >
+      </div>
+      
+        <div class="form-group">
+        <input
+          type="email"
+          id="email"
+          v-model="email"
+          placeholder="请输入邮箱"
+          class="form-control"
+        >
+      </div>
+      
+        <div class="form-group">
+        <input
+          type="password"
+          id="password"
+          v-model="password"
+          placeholder="请输入密码"
+          class="form-control"
+        >
+      </div>
+      
+        <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+      </div>
       
       <div class="button-group">
-        <button class="btn confirm-btn" @click="handleConfirm" :disabled="isLoading">
+        <button class="btn confirm-btn" @click="handleConfirm" :disabled="isLoading || isLoadingConfig">
           <span v-if="!isLoading">确认</span>
           <span v-else class="loading-spinner">
             <span class="spinner"></span> 设置中...
           </span>
         </button>
-        <button class="btn cancel-btn" @click="close" :disabled="isLoading">
+        <button class="btn cancel-btn" @click="close" :disabled="isLoading || isLoadingConfig">
           取消
         </button>
       </div>
@@ -30,7 +68,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 
 // 定义props
 const props = defineProps<{
@@ -41,17 +80,53 @@ const props = defineProps<{
 // 定义emit
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'confirm', url: string): void;
+  (e: 'confirm', url: string, username: string, email: string, password: string): void;
 }>();
 
 const remoteUrl = ref('');
+const username = ref('');
+const email = ref('');
+const password = ref('');
 const isLoading = ref(false);
 const errorMessage = ref('');
+const isLoadingConfig = ref(false);
+
+// 监听弹窗可见性变化，当弹窗打开时加载配置
+watch(() => props.visible, async (newVal) => {
+  if (newVal && props.wikiName) {
+    await loadRemoteRepoConfig();
+  }
+});
+
+// 加载远程仓库配置
+const loadRemoteRepoConfig = async () => {
+  if (!props.wikiName) return;
+  
+  isLoadingConfig.value = true;
+  try {
+    const [remoteUrlValue, usernameValue, emailValue] = await invoke<[string | null, string, string]>('get_remote_repo_config', {
+      wikiName: props.wikiName
+    });
+    
+    remoteUrl.value = remoteUrlValue || '';
+    username.value = usernameValue;
+    email.value = emailValue;
+    password.value = ''; // 出于安全考虑，不加载密码
+  } catch (error) {
+    console.error('加载远程仓库配置失败:', error);
+    // 不显示错误信息，只是无法加载配置
+  } finally {
+    isLoadingConfig.value = false;
+  }
+};
 
 // 关闭弹窗
 const close = () => {
   emit('close');
   remoteUrl.value = '';
+  username.value = '';
+  email.value = '';
+  password.value = '';
   errorMessage.value = '';
 };
 
@@ -59,6 +134,23 @@ const close = () => {
 const handleConfirm = async () => {
   if (!remoteUrl.value.trim()) {
     errorMessage.value = '请输入远程仓库链接';
+    return;
+  }
+  
+  if (!username.value.trim()) {
+    errorMessage.value = '请输入用户名';
+    return;
+  }
+  
+  if (!email.value.trim()) {
+    errorMessage.value = '请输入邮箱';
+    return;
+  }
+  
+  // 简单的邮箱格式验证
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.value.trim())) {
+    errorMessage.value = '请输入有效的邮箱地址';
     return;
   }
   
@@ -73,7 +165,7 @@ const handleConfirm = async () => {
   
   isLoading.value = true;
   try {
-    emit('confirm', remoteUrl.value.trim());
+    emit('confirm', remoteUrl.value.trim(), username.value.trim(), email.value.trim(), password.value.trim());
   } finally {
     isLoading.value = false;
   }
@@ -201,5 +293,24 @@ label {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+  color: #666;
+}
+
+.loading-container .spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #000000;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1rem;
 }
 </style>

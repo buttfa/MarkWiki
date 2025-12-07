@@ -721,18 +721,27 @@ const setupRemoteRepo = (wikiName: string) => {
   isSetupRemoteRepoModalVisible.value = true;
 };
 
-const handleSetupRemoteRepoConfirm = async (url: string) => {
+const handleSetupRemoteRepoConfirm = async (url: string, username: string, email: string, password: string) => {
   // 先关闭弹窗
   isSetupRemoteRepoModalVisible.value = false;
   
   try {
-    // 这里可以添加实际的设置远程仓库的逻辑
-    // 目前显示功能后续实现的提示
+    // 调用后端API设置远程仓库
+    await invoke('setup_remote_repo', {
+      wikiName: selectedWikiName.value || '',
+      remoteUrl: url,
+      username: username,
+      email: email,
+      password: password
+    });
+    
+    // 显示成功提示
     showConfirmModal(
       '设置成功',
-      `已成功设置远程仓库: ${url}\n实际功能将在后续版本实现`,
+      `已成功设置远程仓库: ${url}`,
       async () => {
-        // 这里不做任何实际操作
+        // 刷新知识库列表
+        await refreshWikis();
       },
       '', // 不显示确认按钮
       ''  // 不显示取消按钮
@@ -741,7 +750,7 @@ const handleSetupRemoteRepoConfirm = async (url: string) => {
     console.error('设置远程仓库失败:', error);
     showConfirmModal(
       '设置失败',
-      '设置远程仓库时发生错误，请稍后重试',
+      `设置远程仓库时发生错误: ${error instanceof Error ? error.message : String(error)}`,
       async () => {
         // 这里不做任何实际操作
       },
