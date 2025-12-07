@@ -112,13 +112,25 @@ impl Repository {
     ///
     /// # 参数
     /// * `path` - 要初始化仓库的路径
+    /// * `username` - Git 用户名（可选）
+    /// * `email` - Git 邮箱（可选）
     ///
     /// # 返回值
     /// * `Result<Self, Error>` - 成功时返回 `Ok(Repository)`，包含初始化的仓库对象
     /// * 失败时返回具体的错误信息
-    pub fn init(path: &Path) -> Result<Self, Error> {
+    pub fn init(path: &Path, username: Option<&str>, email: Option<&str>) -> Result<Self, Error> {
         let repo = git2::Repository::init(path).map_err(Error::InitRepository)?;
-        Ok(Self { repo })
+        let mut repo_instance = Self { repo };
+
+        // 设置用户名和邮箱配置
+        if let Some(name) = username {
+            repo_instance.set_config("user.name", name)?;
+        }
+        if let Some(email) = email {
+            repo_instance.set_config("user.email", email)?;
+        }
+
+        Ok(repo_instance)
     }
 
     /// 从远程 URL 克隆 Git 仓库到指定路径
@@ -130,11 +142,48 @@ impl Repository {
     /// # 返回值
     /// * `Result<Self, Error>` - 成功时返回 `Ok(Repository)`，包含克隆的仓库对象
     /// * 失败时返回具体的错误信息
-    pub fn clone(url: &str, path: &Path) -> Result<Self, Error> {
+    pub fn clone(
+        url: &str,
+        path: &Path,
+        username: Option<&str>,
+        email: Option<&str>,
+        password: Option<&str>,
+    ) -> Result<Self, Error> {
         #[cfg(not(target_os = "android"))]
         {
-            let repo = git2::Repository::clone(url, path).map_err(Error::CloneRepository)?;
-            Ok(Self { repo })
+            let mut callbacks = git2::RemoteCallbacks::new();
+
+            // 设置身份验证回调
+            if let Some(user) = username {
+                callbacks.credentials(move |_url, _username_from_url, _allowed_types| {
+                    if let Some(pass) = password {
+                        git2::Cred::userpass_plaintext(user, pass)
+                    } else {
+                        git2::Cred::ssh_key_from_agent(user)
+                    }
+                });
+            }
+
+            // 创建远程配置
+            let mut fetch_opts = git2::FetchOptions::new();
+            fetch_opts.remote_callbacks(callbacks);
+
+            // 创建构建器并设置fetch选项
+            let mut builder = git2::build::RepoBuilder::new();
+            builder.fetch_options(fetch_opts);
+
+            let repo = builder.clone(url, path).map_err(Error::CloneRepository)?;
+            let mut repo_instance = Self { repo };
+
+            // 设置用户名和邮箱配置
+            if let Some(name) = username {
+                repo_instance.set_config("user.name", name)?;
+            }
+            if let Some(email) = email {
+                repo_instance.set_config("user.email", email)?;
+            }
+
+            Ok(repo_instance)
         }
 
         #[cfg(target_os = "android")]
@@ -148,6 +197,17 @@ impl Repository {
                 Ok(git2::CertificateCheckStatus::CertificateOk)
             });
 
+            // 设置身份验证回调
+            if let Some(user) = username {
+                callbacks.credentials(move |_url, _username_from_url, _allowed_types| {
+                    if let Some(pass) = password {
+                        git2::Cred::userpass_plaintext(user, pass)
+                    } else {
+                        git2::Cred::ssh_key_from_agent(user)
+                    }
+                });
+            }
+
             // 创建远程配置
             let mut fetch_opts = git2::FetchOptions::new();
             fetch_opts.remote_callbacks(callbacks);
@@ -157,7 +217,17 @@ impl Repository {
             builder.fetch_options(fetch_opts);
 
             let repo = builder.clone(url, path).map_err(Error::CloneRepository)?;
-            Ok(Self { repo })
+            let mut repo_instance = Self { repo };
+
+            // 设置用户名和邮箱配置
+            if let Some(name) = username {
+                repo_instance.set_config("user.name", name)?;
+            }
+            if let Some(email) = email {
+                repo_instance.set_config("user.email", email)?;
+            }
+
+            Ok(repo_instance)
         }
     }
 
@@ -202,6 +272,23 @@ impl Repository {
         config
             .set_str("user.email", email)
             .map_err(Error::SetConfig)?;
+
+        Ok(())
+    }
+
+    /// 设置单个 Git 配置项
+    ///
+    /// # 参数
+    /// * `key` - 配置项的键
+    /// * `value` - 配置项的值
+    ///
+    /// # 返回值
+    /// * `Result<(), Error>` - 成功时返回 `Ok(())`
+    /// * 失败时返回具体的错误信息
+    pub fn set_config(&self, key: &str, value: &str) -> Result<(), Error> {
+        let mut config = self.repo.config().map_err(Error::Config)?;
+
+        config.set_str(key, value).map_err(Error::SetConfig)?;
 
         Ok(())
     }
@@ -275,7 +362,17 @@ impl Repository {
             .map_err(|_| Error::NoRemote)?;
 
         // 设置fetch选项
-        let callbacks = git2::RemoteCallbacks::new();
+        let mut callbacks = git2::RemoteCallbacks::new();
+
+        // 尝试加载保存的凭据
+        if let Ok(config) = crate::config::AppConfig::load() {
+            let username = config.git_credentials.username.clone();
+            let password = config.git_credentials.password.clone();
+
+            callbacks.credentials(move |_url, _username_from_url, _allowed_types| {
+                git2::Cred::userpass_plaintext(&username, password.as_deref().unwrap_or(""))
+            });
+        }
 
         #[cfg(target_os = "android")]
         {
@@ -350,7 +447,17 @@ impl Repository {
             .map_err(|_| Error::NoRemote)?;
 
         // 设置推送选项
-        let callbacks = git2::RemoteCallbacks::new();
+        let mut callbacks = git2::RemoteCallbacks::new();
+
+        // 尝试加载保存的凭据
+        if let Ok(config) = crate::config::AppConfig::load() {
+            let username = config.git_credentials.username.clone();
+            let password = config.git_credentials.password.clone();
+
+            callbacks.credentials(move |_url, _username_from_url, _allowed_types| {
+                git2::Cred::userpass_plaintext(&username, password.as_deref().unwrap_or(""))
+            });
+        }
 
         #[cfg(target_os = "android")]
         {

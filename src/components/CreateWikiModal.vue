@@ -20,6 +20,35 @@
         <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
       </div>
       
+      <!-- 新增：用户名、邮箱输入框 -->
+      <div class="form-group">
+        <input
+          type="text"
+          v-model="username"
+          placeholder="请输入用户名"
+          class="form-control"
+        >
+      </div>
+      
+      <div class="form-group">
+        <input
+          type="email"
+          v-model="email"
+          placeholder="请输入邮箱"
+          class="form-control"
+        >
+      </div>
+      
+      <!-- 新增：密码输入框（仅从远程仓库创建时显示） -->
+      <div class="form-group" v-if="createType === 'remote'">
+        <input
+          type="password"
+          v-model="password"
+          placeholder="请输入密码（可选）"
+          class="form-control"
+        >
+      </div>
+      
       <div class="button-group">
         <button class="btn create-btn" @click="handleCreate" :disabled="isLoading">
           <span v-if="!isLoading">创建</span>
@@ -51,6 +80,9 @@ const emit = defineEmits<{
 // 状态管理
 const createType = ref<'local' | 'remote'>('local');
 const inputValue = ref('');
+const username = ref('');
+const email = ref('');
+const password = ref('');
 const isLoading = ref(false);
 const errorMessage = ref('');
 
@@ -65,15 +97,36 @@ const inputPlaceholder = computed(() => {
 const close = () => {
   emit('close');
   inputValue.value = '';
+  username.value = '';
+  email.value = '';
+  password.value = '';
   errorMessage.value = '';
 };
 
 // 处理创建知识库
 const handleCreate = async () => {
+  // 验证必填字段
   if (!inputValue.value.trim()) {
     errorMessage.value = createType.value === 'local'
       ? '请输入知识库名'
       : '请输入远程仓库链接';
+    return;
+  }
+  
+  if (!username.value.trim()) {
+    errorMessage.value = '请输入用户名';
+    return;
+  }
+  
+  if (!email.value.trim()) {
+    errorMessage.value = '请输入邮箱';
+    return;
+  }
+  
+  // 简单的邮箱格式验证
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.value.trim())) {
+    errorMessage.value = '请输入有效的邮箱地址';
     return;
   }
 
@@ -82,11 +135,20 @@ const handleCreate = async () => {
 
   try {
     if (createType.value === 'local') {
-      // 调用本地创建接口
-      await invoke('create_local_wiki', { wikiName: inputValue.value.trim() });
+      // 调用本地创建接口，传递用户名和邮箱
+      await invoke('create_local_wiki', {
+        wikiName: inputValue.value.trim(),
+        username: username.value.trim(),
+        email: email.value.trim()
+      });
     } else {
-      // 调用远程创建接口
-      await invoke('create_remote_wiki', { remoteUrl: inputValue.value.trim() });
+      // 调用远程创建接口，传递用户名、邮箱和密码
+      await invoke('create_remote_wiki', {
+        remoteUrl: inputValue.value.trim(),
+        username: username.value.trim(),
+        email: email.value.trim(),
+        password: password.value.trim()
+      });
     }
 
     // 创建成功，通知父组件

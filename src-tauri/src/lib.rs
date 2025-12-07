@@ -1,5 +1,6 @@
 // src/lib.rs
 mod command;
+mod config;
 mod git;
 mod wiki;
 

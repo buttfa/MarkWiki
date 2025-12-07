@@ -123,7 +123,7 @@ impl Wiki {
     /// # 返回值
     /// * `Result<Self, Error>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库实例
     /// * 失败时返回 `Err(Error)`，表示无法创建知识库（如路径已存在或创建目录失败）
-    pub fn create_local_wiki(name: &str) -> Result<Self, Error> {
+    pub fn create_local_wiki(name: &str, username: &str, email: &str) -> Result<Self, Error> {
         // 构造知识库的存储路径
         let path = Self::get_wiki_storage_dir()
             .map_err(|_| Error::StorageDir)?
@@ -137,8 +137,8 @@ impl Wiki {
 
         // 创建知识库目录
         fs::create_dir_all(&path)?;
-        // 初始化 git 仓库
-        git::Repository::init(&path)?;
+        // 初始化 git 仓库，设置用户名和邮箱
+        git::Repository::init(&path, Some(username), Some(email))?;
         Ok(Wiki {
             name: name.to_string(),
             has_remote_repo: false,
@@ -159,7 +159,13 @@ impl Wiki {
     /// # 返回值
     /// * `Result<Self, Error>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库实例
     /// * 失败时返回 `Err(Error)`，表示无法创建知识库（如路径已存在或克隆失败）
-    pub fn create_remote_wiki(name: &str, url: &str) -> Result<Self, Error> {
+    pub fn create_remote_wiki(
+        name: &str,
+        url: &str,
+        username: &str,
+        email: &str,
+        password: Option<&str>,
+    ) -> Result<Self, Error> {
         // 构造知识库的存储路径
         let path = Self::get_wiki_storage_dir()
             .map_err(|_| Error::StorageDir)?
@@ -170,8 +176,8 @@ impl Wiki {
                 path.display()
             )));
         }
-        // 克隆远程仓库
-        git::Repository::clone(url, &path)?;
+        // 克隆远程仓库，设置用户名、邮箱和密码
+        git::Repository::clone(url, &path, Some(username), Some(email), password)?;
         Ok(Wiki {
             name: name.to_string(),
             has_remote_repo: true,

@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::config::AppConfig;
 use crate::wiki::build_file_tree;
 use crate::wiki::FileNode;
 use crate::wiki::Wiki;
@@ -74,19 +75,32 @@ pub async fn get_wiki_list() -> Result<Vec<Wiki>, String> {
 ///
 /// # 参数
 /// * `wiki_name` - 要创建的知识库名称
+/// * `username` - Git用户名
+/// * `email` - Git邮箱
 ///
 /// # 返回值
 /// * `Result<Wiki, String>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库信息
 /// * 失败时返回 `Err(String)`，包含具体错误信息
 #[tauri::command]
-pub async fn create_local_wiki(wiki_name: &str) -> Result<Wiki, String> {
+pub async fn create_local_wiki(
+    wiki_name: &str,
+    username: &str,
+    email: &str,
+) -> Result<Wiki, String> {
     // 检查知识库是否已存在
     if Wiki::exists(wiki_name) {
         return Err(format!("知识库 {} 已存在", wiki_name));
     }
 
-    // 创建知识库并返回新创建的Wiki实例
-    Wiki::create_local_wiki(wiki_name).map_err(|e| format!("创建本地知识库失败: {}", e))
+    // 创建知识库
+    let wiki = Wiki::create_local_wiki(wiki_name, username, email)
+        .map_err(|e| format!("创建本地知识库失败: {}", e))?;
+
+    // 保存用户配置到文件
+    let config = AppConfig::new(username, email, None);
+    config.save().map_err(|e| format!("保存配置失败: {}", e))?;
+
+    Ok(wiki)
 }
 
 /// 从远程URL创建知识库
@@ -101,7 +115,12 @@ pub async fn create_local_wiki(wiki_name: &str) -> Result<Wiki, String> {
 /// * `Result<Wiki, String>` - 成功时返回 `Ok(Wiki)`，包含新创建的知识库信息
 /// * 失败时返回 `Err(String)`，包含具体错误信息
 #[tauri::command]
-pub async fn create_remote_wiki(remote_url: &str) -> Result<Wiki, String> {
+pub async fn create_remote_wiki(
+    remote_url: &str,
+    username: &str,
+    email: &str,
+    password: &str,
+) -> Result<Wiki, String> {
     // 从URL提取仓库名称
     let wiki_name = remote_url
         .split('/')
@@ -115,8 +134,32 @@ pub async fn create_remote_wiki(remote_url: &str) -> Result<Wiki, String> {
     }
 
     // 从远程URL创建知识库
-    Wiki::create_remote_wiki(wiki_name, remote_url)
-        .map_err(|e| format!("从远程URL创建知识库失败: {}", e))
+    let wiki = Wiki::create_remote_wiki(
+        wiki_name,
+        remote_url,
+        username,
+        email,
+        if password.is_empty() {
+            None
+        } else {
+            Some(password)
+        },
+    )
+    .map_err(|e| format!("从远程URL创建知识库失败: {}", e))?;
+
+    // 保存用户配置到文件
+    let config = AppConfig::new(
+        username,
+        email,
+        if password.is_empty() {
+            None
+        } else {
+            Some(password)
+        },
+    );
+    config.save().map_err(|e| format!("保存配置失败: {}", e))?;
+
+    Ok(wiki)
 }
 
 /// 删除知识库
