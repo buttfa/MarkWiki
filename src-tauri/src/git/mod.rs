@@ -535,17 +535,26 @@ impl Repository {
     }
 
     /// 完整的同步流程（无冲突情况下）
-    pub fn sync(&self) -> Result<(), Error> {
+    pub fn sync(&mut self) -> Result<(), Error> {
         // 1. 检查是否有远程仓库
         if !self.has_remote()? {
             // 现在可以使用 ? 操作符
             return Err(Error::NoRemote);
         }
 
-        // 2. 获取远程更新
+        // 2. 检查并提交本地修改
+        if self.has_uncommitted_changes()? {
+            // 添加所有修改到暂存区
+            self.add_all()?;
+
+            // 提交修改
+            self.commit("自动提交")?;
+        }
+
+        // 3. 获取远程更新
         self.fetch()?;
 
-        // 3. 合并远程分支（无冲突情况）
+        // 4. 合并远程分支（无冲突情况）
         match self.merge() {
             Ok(_) => (),
             Err(Error::MergeConflict) => {
@@ -555,7 +564,7 @@ impl Repository {
             Err(e) => return Err(e),
         }
 
-        // 4. 推送本地修改
+        // 5. 推送本地修改
         self.push()?;
 
         Ok(())

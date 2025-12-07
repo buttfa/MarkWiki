@@ -555,8 +555,9 @@ const syncWiki = async (wikiName: string) => {
     // 调用你的 Git 同步命令
     await invoke('git_sync', { wikiName });
     
-    // 关闭加载提示
+    // 关闭加载提示并重置加载状态
     isConfirmModalVisible.value = false;
+    isConfirmModalLoading.value = false;
     
     // 显示成功提示
     showConfirmModal(
@@ -570,8 +571,9 @@ const syncWiki = async (wikiName: string) => {
       ''
     );
   } catch (error) {
-    // 关闭加载提示
+    // 关闭加载提示并重置加载状态
     isConfirmModalVisible.value = false;
+    isConfirmModalLoading.value = false;
     
     // 显示失败提示
     showConfirmModal(

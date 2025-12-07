@@ -455,7 +455,7 @@ use std::path::PathBuf;
 
 /// Git 同步操作
 ///
-/// 执行完整的 Git 同步流程：获取远程更新 → 合并 → 推送
+/// 执行完整的 Git 同步流程：提交本地修改 → 获取远程更新 → 合并 → 推送
 /// 只支持无冲突情况下的同步
 ///
 /// # 参数
@@ -471,7 +471,7 @@ pub async fn git_sync(wiki_name: String) -> Result<(), String> {
         .map_err(|e| format!("无法打开知识库 {}: {}", wiki_name, e))?;
 
     // 打开 Git 仓库
-    let repo = Repository::open(&PathBuf::from(&wiki.path))
+    let mut repo = Repository::open(&PathBuf::from(&wiki.path))
         .map_err(|e| format!("无法打开 Git 仓库: {}", e))?;
 
     // 执行同步
