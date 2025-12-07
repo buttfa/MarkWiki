@@ -180,30 +180,37 @@ impl Repository {
     /// 获取用户配置（用户名和邮箱）
     pub fn get_user_config(&self) -> Result<(String, String), Error> {
         let config = self.repo.config().map_err(Error::Config)?;
-        
-        let name = config.get_string("user.name")
+
+        let name = config
+            .get_string("user.name")
             .unwrap_or_else(|_| "MarkWiki User".to_string());
-        
-        let email = config.get_string("user.email")
+
+        let email = config
+            .get_string("user.email")
             .unwrap_or_else(|_| "user@markwiki.app".to_string());
-        
+
         Ok((name, email))
     }
 
     /// 设置用户配置（用户名和邮箱）
     pub fn set_user_config(&self, name: &str, email: &str) -> Result<(), Error> {
         let mut config = self.repo.config().map_err(Error::Config)?;
-        
-        config.set_str("user.name", name).map_err(Error::SetConfig)?;
-        config.set_str("user.email", email).map_err(Error::SetConfig)?;
-        
+
+        config
+            .set_str("user.name", name)
+            .map_err(Error::SetConfig)?;
+        config
+            .set_str("user.email", email)
+            .map_err(Error::SetConfig)?;
+
         Ok(())
     }
 
     /// 添加所有修改到暂存区
     pub fn add_all(&mut self) -> Result<(), Error> {
         let mut index = self.repo.index().map_err(Error::AddToIndex)?;
-        index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)
+        index
+            .add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)
             .map_err(Error::AddToIndex)?;
         index.write().map_err(Error::AddToIndex)?;
         Ok(())
@@ -238,24 +245,21 @@ impl Repository {
         // 创建提交
         match parent_commit {
             Some(parent) => {
-                self.repo.commit(
-                    Some("HEAD"),
-                    &signature,
-                    &signature,
-                    message,
-                    &tree,
-                    &[&parent],
-                ).map_err(Error::Commit)?;
+                self.repo
+                    .commit(
+                        Some("HEAD"),
+                        &signature,
+                        &signature,
+                        message,
+                        &tree,
+                        &[&parent],
+                    )
+                    .map_err(Error::Commit)?;
             }
             None => {
-                self.repo.commit(
-                    Some("HEAD"),
-                    &signature,
-                    &signature,
-                    message,
-                    &tree,
-                    &[],
-                ).map_err(Error::Commit)?;
+                self.repo
+                    .commit(Some("HEAD"), &signature, &signature, message, &tree, &[])
+                    .map_err(Error::Commit)?;
             }
         }
 
@@ -265,25 +269,27 @@ impl Repository {
     /// 从远程仓库获取更新
     pub fn fetch(&self) -> Result<(), Error> {
         let remote_name = "origin";
-        let mut remote = self.repo.find_remote(remote_name)
+        let mut remote = self
+            .repo
+            .find_remote(remote_name)
             .map_err(|_| Error::NoRemote)?;
 
         // 设置fetch选项
         let callbacks = git2::RemoteCallbacks::new();
-        
+
         #[cfg(target_os = "android")]
         {
             // 在Android平台上忽略证书验证错误
-            callbacks.certificate_check(|_cert, _host| {
-                Ok(git2::CertificateCheckStatus::CertificateOk)
-            });
+            callbacks
+                .certificate_check(|_cert, _host| Ok(git2::CertificateCheckStatus::CertificateOk));
         }
 
         let mut fetch_opts = git2::FetchOptions::new();
         fetch_opts.remote_callbacks(callbacks);
 
         // 执行fetch
-        remote.fetch(&["main"], Some(&mut fetch_opts), None)
+        remote
+            .fetch(&["master"], Some(&mut fetch_opts), None)
             .map_err(Error::Fetch)?;
 
         Ok(())
@@ -292,12 +298,19 @@ impl Repository {
     /// 合并远程分支到本地分支（无冲突版本）
     pub fn merge(&self) -> Result<bool, Error> {
         // 获取远程分支引用
-        let fetch_head = self.repo.find_reference("FETCH_HEAD").map_err(Error::FindReference)?;
-        let fetch_commit = self.repo.reference_to_annotated_commit(&fetch_head)
+        let fetch_head = self
+            .repo
+            .find_reference("FETCH_HEAD")
+            .map_err(Error::FindReference)?;
+        let fetch_commit = self
+            .repo
+            .reference_to_annotated_commit(&fetch_head)
             .map_err(Error::FindReference)?;
 
         // 分析合并
-        let analysis = self.repo.merge_analysis(&[&fetch_commit])
+        let analysis = self
+            .repo
+            .merge_analysis(&[&fetch_commit])
             .map_err(Error::Merge)?;
 
         // 处理不同的合并情况
@@ -306,12 +319,17 @@ impl Repository {
             return Ok(false);
         } else if analysis.0.is_fast_forward() {
             // 快速前进合并
-            let mut head = self.repo.find_reference("refs/heads/main")
+            let mut head = self
+                .repo
+                .find_reference("refs/heads/master")
                 .map_err(Error::FindReference)?;
             head.set_target(fetch_commit.id(), "Fast-forward")
                 .map_err(Error::Merge)?;
-            self.repo.set_head("refs/heads/main").map_err(Error::Merge)?;
-            self.repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force()))
+            self.repo
+                .set_head("refs/heads/master")
+                .map_err(Error::Merge)?;
+            self.repo
+                .checkout_head(Some(git2::build::CheckoutBuilder::default().force()))
                 .map_err(Error::Merge)?;
             return Ok(true);
         } else if analysis.0.is_normal() {
@@ -326,25 +344,30 @@ impl Repository {
     /// 推送到远程仓库
     pub fn push(&self) -> Result<(), Error> {
         let remote_name = "origin";
-        let mut remote = self.repo.find_remote(remote_name)
+        let mut remote = self
+            .repo
+            .find_remote(remote_name)
             .map_err(|_| Error::NoRemote)?;
 
         // 设置推送选项
         let callbacks = git2::RemoteCallbacks::new();
-        
+
         #[cfg(target_os = "android")]
         {
             // 在Android平台上忽略证书验证错误
-            callbacks.certificate_check(|_cert, _host| {
-                Ok(git2::CertificateCheckStatus::CertificateOk)
-            });
+            callbacks
+                .certificate_check(|_cert, _host| Ok(git2::CertificateCheckStatus::CertificateOk));
         }
 
         let mut push_opts = git2::PushOptions::new();
         push_opts.remote_callbacks(callbacks);
 
         // 执行推送
-        remote.push(&["refs/heads/main:refs/heads/main"], Some(&mut push_opts))
+        remote
+            .push(
+                &["refs/heads/master:refs/heads/master"],
+                Some(&mut push_opts),
+            )
             .map_err(Error::Push)?;
 
         Ok(())
@@ -357,7 +380,7 @@ impl Repository {
                 if e.code() == git2::ErrorCode::NotFound {
                     Ok(false)
                 } else {
-                    Err(Error::Remote(e))  // 转换为 Error 类型
+                    Err(Error::Remote(e)) // 转换为 Error 类型
                 }
             }
         }
@@ -366,7 +389,8 @@ impl Repository {
     /// 完整的同步流程（无冲突情况下）
     pub fn sync(&self) -> Result<(), Error> {
         // 1. 检查是否有远程仓库
-        if !self.has_remote()? {  // 现在可以使用 ? 操作符
+        if !self.has_remote()? {
+            // 现在可以使用 ? 操作符
             return Err(Error::NoRemote);
         }
 
