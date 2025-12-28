@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api';
 
 // 路由相关
 const route = useRoute();
