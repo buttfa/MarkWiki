@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue';
 import WorkspaceView from '../views/WorkspaceView.vue';
 import EditorView from '../views/EditorView.vue';
 import NotFoundView from '../views/NotFoundView.vue';
+import ConflictResolverView from '../views/ConflictResolverView.vue';
 
 const routes = [
   {
@@ -30,8 +31,15 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHashHistory(),
-  routes
+  history: createWebHashHistory(import.meta.env.BASE_URL),
+  routes: [
+    ...routes,
+    {
+      path: '/conflict-resolver',
+      name: 'conflict-resolver',
+      component: ConflictResolverView
+    }
+  ]
 });
 
 export default router;
